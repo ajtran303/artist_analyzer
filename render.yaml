@@ -28,7 +28,7 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: GENIUS_API_TOKEN
-        sync: false  # Set manually in Render dashboard
+        sync: false # Set manually in Render dashboard
       - key: DATABASE_URL
         fromDatabase:
           name: artist-analyzer-db
@@ -39,9 +39,9 @@ services:
           name: artist-analyzer-redis
           property: connectionString
       - key: FORCE_HTTPS
-        value: "false"  # Render handles SSL termination at load balancer
+        value: "false" # Render handles SSL termination at load balancer
       - key: CORS_ORIGINS
-        value: "*"  # Update with your domain after deployment
+        value: "*" # Update with your domain after deployment
 
   # Background Worker (Celery)
   - type: worker
@@ -62,7 +62,7 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: GENIUS_API_TOKEN
-        sync: false  # Set manually in Render dashboard
+        sync: false # Set manually in Render dashboard
       - key: DATABASE_URL
         fromDatabase:
           name: artist-analyzer-db
@@ -78,10 +78,10 @@ services:
     name: artist-analyzer-redis
     plan: starter
     maxmemoryPolicy: allkeys-lru
-    ipAllowList: []  # Only allow internal connections
+    ipAllowList: [] # Only allow internal connections
 
 databases:
   - name: artist-analyzer-db
     databaseName: artist_analyzer
     user: analyzer_user
-    plan: starter
+    plan: basic
