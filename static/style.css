@@ -137,6 +137,8 @@ body {
   margin: 0 auto;
   padding: 1rem;
   flex: 1;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 @media (min-width: 768px) {
@@ -367,6 +369,7 @@ body {
   max-width: 900px;
   margin: 2rem auto;
   overflow-x: hidden;
+  width: 100%;
 }
 
 .album-header {
@@ -380,17 +383,31 @@ body {
 }
 
 .album-header h2 {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   color: var(--lcd-text);
   text-shadow: 0 0 10px var(--accent-primary);
   text-transform: uppercase;
-  letter-spacing: 2px;
+  letter-spacing: 1px;
+  word-break: break-word;
+}
+
+@media (min-width: 480px) {
+  .album-header h2 {
+    font-size: 1.5rem;
+    letter-spacing: 2px;
+  }
 }
 
 .album-instruction {
   color: var(--lcd-text-dim);
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   margin-top: 0.25rem;
+}
+
+@media (min-width: 480px) {
+  .album-instruction {
+    font-size: 0.95rem;
+  }
 }
 
 /* Winamp Playlist-Style Album List */
@@ -480,8 +497,18 @@ body {
 
 /* Mobile/Tablet: stack analyze button below */
 @media (max-width: 640px) {
+  .album-section {
+    margin: 1rem 0;
+    padding: 0;
+  }
+
+  .album-grid {
+    max-height: 350px;
+  }
+
   .album-item {
-    padding: 0.5rem;
+    padding: 0.75rem 0.5rem;
+    flex-wrap: wrap;
   }
 
   .album-index {
@@ -489,12 +516,18 @@ body {
   }
 
   .album-info {
-    flex-basis: 100%;
+    flex: 1 1 100%;
     min-width: 0;
+    width: 100%;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.125rem;
   }
 
   .album-name {
-    font-size: 0.85rem;
+    font-size: 0.9rem;
+    width: 100%;
+    display: block;
   }
 
   .album-year {
@@ -502,15 +535,16 @@ body {
   }
 
   .album-action {
-    flex-basis: 100%;
+    flex: 1 1 100%;
+    width: 100%;
     margin-left: 0;
-    margin-top: 0.25rem;
+    margin-top: 0.5rem;
   }
 
   .analyze-album-btn {
     width: 100%;
-    padding: 0.4rem 0.5rem;
-    font-size: 0.85rem;
+    padding: 0.6rem 0.5rem;
+    font-size: 0.9rem;
   }
 }
 
@@ -530,6 +564,14 @@ body {
   color: var(--text-secondary);
   padding: 2rem;
   grid-column: 1 / -1;
+}
+
+.album-limit-notice {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  padding: 0.5rem;
+  margin-top: 0.5rem;
 }
 
 .load-more-indicator {
