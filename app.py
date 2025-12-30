@@ -125,6 +125,10 @@ def create_app(config_class=None):
     with app.app_context():
         db.create_all()
 
+    # Initialize Celery with Flask app context
+    from celery_app import init_celery
+    init_celery(app)
+
     # Register blueprints
     app.register_blueprint(api_bp)
 

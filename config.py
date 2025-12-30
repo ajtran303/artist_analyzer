@@ -21,9 +21,9 @@ class Config:
         'max_overflow': 20,
     }
 
-    # Celery
-    CELERY_BROKER_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
-    CELERY_RESULT_BACKEND = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+    # Celery (use lowercase keys for Celery 5.x+)
+    broker_url = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+    result_backend = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
 
     # Genius API
     GENIUS_API_TOKEN = os.environ.get('GENIUS_API_TOKEN')
@@ -65,8 +65,8 @@ class TestingConfig(Config):
     TESTING = True
     SECRET_KEY = 'test-secret-key'
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
-    CELERY_BROKER_URL = 'memory://'
-    CELERY_RESULT_BACKEND = 'cache+memory://'
+    broker_url = 'memory://'
+    result_backend = 'cache+memory://'
     WTF_CSRF_ENABLED = False
     SQLALCHEMY_ENGINE_OPTIONS = {}  # SQLite doesn't use pooling
 

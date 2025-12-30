@@ -215,7 +215,13 @@ def submit_analysis():
 
         # Queue Celery task (pass artist_name for Genius search)
         from pipeline.tasks import analyze_album_async
-        task = analyze_album_async.delay(album_id, album_name, analysis.id, artist_name)
+        logger.info(f"Sending task to Celery for analysis_id={analysis.id}")
+        try:
+            task = analyze_album_async.delay(album_id, album_name, analysis.id, artist_name)
+            logger.info(f"Task sent successfully, task.id={task.id}")
+        except Exception as celery_error:
+            logger.error(f"Failed to send Celery task: {celery_error}")
+            raise
 
         # Update analysis with job ID
         analysis.job_id = task.id
