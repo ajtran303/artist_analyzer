@@ -88,7 +88,13 @@
         </div>
         <div class="sentiment-charts">
             <div class="chart-container full-width">
-                <h3>By Song</h3>
+                <div class="chart-header">
+                    <h3 id="chart-title">Track Order</h3>
+                    <div class="sort-toggle">
+                        <button id="sort-track" class="sort-btn active">Track Order</button>
+                        <button id="sort-sentiment" class="sort-btn">By Sentiment</button>
+                    </div>
+                </div>
                 <div id="song-chart" class="bar-chart"></div>
             </div>
         </div>

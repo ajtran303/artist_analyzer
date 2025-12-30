@@ -16,7 +16,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     let pollInterval = null;
     let funFactInterval = null;
-    let currentFunFactIndex = 0;
+    let songSentimentData = []; // Store original song order
+    let currentSortMode = 'track'; // 'track' or 'sentiment'
 
     // Fun facts about lyrics analysis
     const funFacts = [
@@ -32,6 +33,30 @@ document.addEventListener('DOMContentLoaded', function() {
         "Natural Language Processing has roots dating back to the 1950s.",
         "The most covered song of all time is 'Yesterday' by The Beatles.",
         "Lyrics analysis can predict song popularity with surprising accuracy.",
+        "Eminem holds the record for most words in a hit single with 'Rap God' at 1,560 words.",
+        "The human brain processes music in the same areas that process language.",
+        "Country music lyrics mention trucks, beer, and rain more than any other genre.",
+        "Taylor Swift's lyrics have been studied by linguists for their narrative complexity.",
+        "The word 'baby' appears in over 25% of all Billboard Hot 100 songs.",
+        "Radiohead's lyrics are considered some of the most linguistically complex in rock music.",
+        "Studies show sad songs are streamed more often during winter months.",
+        "Bob Dylan won the Nobel Prize in Literature partly for his lyrical compositions.",
+        "The average hit song has a reading level of about 3rd grade.",
+        "K-pop lyrics often mix Korean, English, and Japanese in a single song.",
+        "Beyoncé's 'Lemonade' album has been analyzed in over 100 academic papers.",
+        "Spotify uses NLP to analyze lyrics for mood-based playlist recommendations.",
+        "The word 'yeah' is one of the most common filler words in English lyrics.",
+        "Finnish has produced more metal bands per capita than any other country.",
+        "Queen's 'Bohemian Rhapsody' contains over 900 individual vocal overdubs.",
+        "AI can now generate lyrics that are indistinguishable from human-written ones 40% of the time.",
+        "The Beatles used the word 'love' 613 times across their discography.",
+        "Daft Punk's 'Around the World' repeats the title phrase exactly 144 times.",
+        "Researchers found that lyrics mentioning specific places boost local tourism.",
+        "The longest officially released song is over 13 hours long.",
+        "Prince wrote over 500 songs that were never released during his lifetime.",
+        "Kendrick Lamar's lyrics have been cited in academic papers on social justice.",
+        "The most common rhyme scheme in pop music is ABAB.",
+        "Songs in minor keys are perceived as sadder regardless of lyrical content.",
     ];
 
     // Start polling for status
@@ -45,9 +70,9 @@ document.addEventListener('DOMContentLoaded', function() {
     function showFunFact() {
         funFactEl.classList.remove('fade-in');
         void funFactEl.offsetWidth; // Trigger reflow
-        funFactEl.textContent = funFacts[currentFunFactIndex];
+        const randomIndex = Math.floor(Math.random() * funFacts.length);
+        funFactEl.textContent = funFacts[randomIndex];
         funFactEl.classList.add('fade-in');
-        currentFunFactIndex = (currentFunFactIndex + 1) % funFacts.length;
     }
 
     async function checkStatus() {
@@ -206,8 +231,40 @@ document.addEventListener('DOMContentLoaded', function() {
             overallEl.className = 'score neutral';
         }
 
-        // Render song chart
-        renderBarChart('song-chart', sentiment.by_song || [], 'title');
+        // Store original song order data
+        songSentimentData = sentiment.by_song || [];
+
+        // Render song chart in track order
+        renderBarChart('song-chart', songSentimentData, 'title');
+
+        // Set up sort toggle buttons
+        setupSortToggle();
+    }
+
+    function setupSortToggle() {
+        const sortTrackBtn = document.getElementById('sort-track');
+        const sortSentimentBtn = document.getElementById('sort-sentiment');
+        const chartTitle = document.getElementById('chart-title');
+
+        sortTrackBtn.addEventListener('click', () => {
+            if (currentSortMode === 'track') return;
+            currentSortMode = 'track';
+            sortTrackBtn.classList.add('active');
+            sortSentimentBtn.classList.remove('active');
+            chartTitle.textContent = 'Track Order';
+            renderBarChart('song-chart', songSentimentData, 'title');
+        });
+
+        sortSentimentBtn.addEventListener('click', () => {
+            if (currentSortMode === 'sentiment') return;
+            currentSortMode = 'sentiment';
+            sortSentimentBtn.classList.add('active');
+            sortTrackBtn.classList.remove('active');
+            chartTitle.textContent = 'By Sentiment';
+            // Sort from most negative to most positive
+            const sorted = [...songSentimentData].sort((a, b) => a.score - b.score);
+            renderBarChart('song-chart', sorted, 'title');
+        });
     }
 
     function renderBarChart(containerId, data, labelKey) {
