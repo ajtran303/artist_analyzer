@@ -65,16 +65,32 @@ def _get_public_api():
 
 
 def _search_artist_authenticated(artist_name):
-    """Search for artist using authenticated Genius API."""
+    """Search for artist using lyricsgenius library (handles API properly)."""
     genius = _get_genius_client()
     if not genius:
+        logger.warning("No GENIUS_API_TOKEN set, skipping authenticated search")
         return None, None
 
     try:
-        # Use lyricsgenius search which uses the official API
-        result = genius.search_artist(artist_name, max_songs=0, get_full_info=False)
-        if result:
-            return result.id, result.name
+        # Use lyricsgenius to search - it handles the API correctly
+        search_results = genius.search_songs(artist_name)
+        hits = search_results.get('hits', []) if search_results else []
+
+        # Find artist from search results
+        for hit in hits:
+            result = hit.get('result', {})
+            artist = result.get('primary_artist', {})
+            artist_name_found = artist.get('name', '')
+            if artist_name_found.lower() == artist_name.lower():
+                logger.info(f"Found exact match: {artist_name_found}")
+                return artist.get('id'), artist_name_found
+
+        # Return first artist found if no exact match
+        if hits:
+            artist = hits[0].get('result', {}).get('primary_artist', {})
+            logger.info(f"Found artist: {artist.get('name')}")
+            return artist.get('id'), artist.get('name')
+
         return None, None
     except Exception as e:
         logger.warning(f"Authenticated search failed: {e}")
@@ -262,6 +278,33 @@ def _get_songs_from_albums(artist_id, artist_name, max_songs=50):
 
 def _get_unique_albums(public_api, artist_id):
     """Get deduplicated albums for an artist."""
+    # Try lyricsgenius first if token available
+    genius = _get_genius_client()
+    if genius:
+        try:
+            # Use lyricsgenius artist_songs method
+            songs_data = genius.artist_songs(artist_id, per_page=50, sort='popularity')
+            songs = songs_data.get('songs', []) if songs_data else []
+
+            # Extract unique albums from songs
+            unique_albums = []
+            seen = set()
+            for song in songs:
+                album = song.get('album')
+                if album:
+                    name = album.get('name', '')
+                    normalized = _normalize_album_name(name)
+                    if normalized and normalized not in seen:
+                        seen.add(normalized)
+                        unique_albums.append(album)
+
+            if unique_albums:
+                logger.info(f"Found {len(unique_albums)} albums via lyricsgenius")
+                return unique_albums
+        except Exception as e:
+            logger.warning(f"Lyricsgenius album fetch failed: {e}, trying web API")
+
+    # Fallback to web API
     try:
         response = requests.get(
             f'https://genius.com/api/artists/{artist_id}/albums',
@@ -294,6 +337,19 @@ def _get_unique_albums(public_api, artist_id):
 
 def _get_album_tracks(public_api, album_id):
     """Get tracks from a specific album."""
+    # Try lyricsgenius first if token available
+    genius = _get_genius_client()
+    if genius:
+        try:
+            tracks_data = genius.album_tracks(album_id)
+            tracks = tracks_data.get('tracks', []) if tracks_data else []
+            if tracks:
+                logger.info(f"Got {len(tracks)} tracks via lyricsgenius")
+                return tracks
+        except Exception as e:
+            logger.warning(f"Lyricsgenius tracks fetch failed: {e}, trying web API")
+
+    # Fallback to web API
     try:
         response = requests.get(
             f'https://genius.com/api/albums/{album_id}/tracks',
