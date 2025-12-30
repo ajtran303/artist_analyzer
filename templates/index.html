@@ -8,6 +8,16 @@ endblock %} {% block content %}
   </p>
 </div>
 
+<!-- Compare Mode Banner (hidden by default) -->
+<div id="compare-banner" class="compare-banner hidden">
+  <div class="compare-banner-content">
+    <span class="compare-banner-text">
+      Comparing with: <strong id="compare-album-name"></strong>
+    </span>
+    <button id="cancel-compare" class="compare-cancel-btn">Cancel</button>
+  </div>
+</div>
+
 <!-- Step 1: Search for Artist -->
 <div class="search-section">
   <form id="search-form" class="analyze-form">
@@ -17,7 +27,7 @@ endblock %} {% block content %}
         type="text"
         id="artist-name"
         name="artist_name"
-        placeholder="Enter artist name (e.g., The Cure)"
+        placeholder="(e.g., The Cure)"
         required
         autocomplete="off"
       />
@@ -67,6 +77,60 @@ endblock %} {% block content %}
     <p class="album-instruction">Select an album to analyze</p>
   </div>
   <div id="album-grid" class="album-grid"></div>
+</div>
+
+<!-- Analysis Progress (for compare mode) -->
+<div id="analysis-section" class="status-section hidden">
+  <div class="status-indicator">
+    <span class="spinner"></span>
+    <span id="analysis-status-text">Starting analysis...</span>
+  </div>
+
+  <div class="progress-bar-container">
+    <div class="progress-bar">
+      <div id="analysis-progress-fill" class="progress-fill"></div>
+    </div>
+    <span id="analysis-progress-percent" class="progress-percent">0%</span>
+  </div>
+
+  <div class="step-timeline">
+    <div class="step" data-step="1">
+      <div class="step-icon-wrapper"><span class="step-icon">○</span></div>
+      <span class="step-label">Fetching Lyrics</span>
+    </div>
+    <div class="step-connector"></div>
+    <div class="step" data-step="2">
+      <div class="step-icon-wrapper"><span class="step-icon">○</span></div>
+      <span class="step-label">Preprocessing</span>
+    </div>
+    <div class="step-connector"></div>
+    <div class="step" data-step="3">
+      <div class="step-icon-wrapper"><span class="step-icon">○</span></div>
+      <span class="step-label">Topic Analysis</span>
+    </div>
+    <div class="step-connector"></div>
+    <div class="step" data-step="4">
+      <div class="step-icon-wrapper"><span class="step-icon">○</span></div>
+      <span class="step-label">Sentiment</span>
+    </div>
+    <div class="step-connector"></div>
+    <div class="step" data-step="5">
+      <div class="step-icon-wrapper"><span class="step-icon">○</span></div>
+      <span class="step-label">Bonus Analysis</span>
+    </div>
+    <div class="step-connector"></div>
+    <div class="step" data-step="6">
+      <div class="step-icon-wrapper"><span class="step-icon">○</span></div>
+      <span class="step-label">Saving Results</span>
+    </div>
+  </div>
+
+  <div class="fun-fact-container">
+    <span class="fun-fact-label">Did you know?</span>
+    <p id="analysis-fun-fact" class="fun-fact"></p>
+  </div>
+
+  <p class="lyrics-note">Some tracks may be excluded if lyrics are unavailable or instrumental.</p>
 </div>
 
 <div class="features">

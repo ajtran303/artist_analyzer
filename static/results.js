@@ -13,11 +13,15 @@ document.addEventListener("DOMContentLoaded", function () {
   const progressFill = document.getElementById("progress-fill");
   const progressPercent = document.getElementById("progress-percent");
   const funFactEl = document.getElementById("fun-fact");
+  const compareBtn = document.getElementById("compare-btn");
+  const toast = document.getElementById("toast");
+  const toastMessage = document.getElementById("toast-message");
 
   let pollInterval = null;
   let funFactInterval = null;
   let songSentimentData = []; // Store original song order
   let currentSortMode = "track"; // 'track' or 'sentiment'
+  let currentAlbumData = null; // Store current album info for comparison
 
   // Fun facts about lyrics analysis
   const funFacts = [
@@ -82,6 +86,13 @@ document.addEventListener("DOMContentLoaded", function () {
       if (data.album) {
         albumNameEl.textContent = data.album;
       }
+
+      // Store album data for comparison feature
+      currentAlbumData = {
+        job_id: JOB_ID,
+        artist: data.artist,
+        album: data.album
+      };
 
       if (data.status === "completed") {
         clearInterval(pollInterval);
@@ -167,6 +178,10 @@ document.addEventListener("DOMContentLoaded", function () {
   function showResults(results) {
     statusSection.classList.add("hidden");
     resultsSection.classList.remove("hidden");
+
+    // Show compare button and set up handler
+    compareBtn.classList.remove("hidden");
+    setupCompareButton();
 
     // Render topics
     renderTopics(results.topics || []);
@@ -397,5 +412,53 @@ document.addEventListener("DOMContentLoaded", function () {
     statusSection.classList.add("hidden");
     errorSection.classList.remove("hidden");
     errorMessageEl.textContent = message;
+  }
+
+  // Compare feature functions
+  function setupCompareButton() {
+    // Check if we're already in compare mode (have album A stored)
+    const storedAlbum = localStorage.getItem("compareAlbumA");
+
+    if (storedAlbum) {
+      const albumA = JSON.parse(storedAlbum);
+
+      // Check if this is the same album (user came back to same album)
+      if (albumA.job_id === JOB_ID) {
+        compareBtn.textContent = "Compare";
+      } else {
+        // We have album A, this is album B - redirect to compare page
+        localStorage.removeItem("compareAlbumA");
+        window.location.href = `/compare?a=${albumA.job_id}&b=${JOB_ID}`;
+        return;
+      }
+    }
+
+    compareBtn.addEventListener("click", handleCompareClick);
+  }
+
+  function handleCompareClick() {
+    if (!currentAlbumData) return;
+
+    // Store this album as Album A
+    localStorage.setItem("compareAlbumA", JSON.stringify(currentAlbumData));
+
+    // Show toast
+    showToast("Album saved! Now search for another album to compare.");
+
+    // Redirect to home page in compare mode
+    setTimeout(() => {
+      window.location.href = "/?compare=true";
+    }, 1500);
+  }
+
+  function showToast(message) {
+    toastMessage.textContent = message;
+    toast.classList.remove("hidden");
+    toast.classList.add("show");
+
+    setTimeout(() => {
+      toast.classList.remove("show");
+      toast.classList.add("hidden");
+    }, 3000);
   }
 });

@@ -1,9 +1,17 @@
 {% extends "base.html" %} {% block title %}Analysis Results{% endblock %} {%
 block content %}
 <div class="results-header">
-  <a href="/" class="back-link">&larr; Analyze Another Album</a>
+  <div class="results-header-nav">
+    <a href="/" class="back-link">&larr; Analyze Another Album</a>
+    <button id="compare-btn" class="btn btn-secondary hidden">Compare</button>
+  </div>
   <h1 id="artist-name">Loading...</h1>
   <p id="album-name" class="album-subtitle"></p>
+</div>
+
+<!-- Toast notification -->
+<div id="toast" class="toast hidden">
+  <span id="toast-message"></span>
 </div>
 
 <div id="status-section" class="status-section">
@@ -173,6 +181,11 @@ block content %}
       </div>
     </div>
   </section>
+
+  <!-- Actions -->
+  <div class="results-actions">
+    <a href="/" class="btn">Analyze Another Album</a>
+  </div>
 </div>
 
 <div id="error-section" class="error-section hidden">

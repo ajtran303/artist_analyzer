@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+{% block title %}Compare Albums{% endblock %}
+{% block content %}
+<div class="compare-header">
+  <a href="/" class="back-link">&larr; Back to Search</a>
+  <h1>Compare Albums</h1>
+</div>
+
+<!-- Loading State -->
+<div id="loading-section" class="compare-loading">
+  <div class="loading-content">
+    <span class="spinner spinner-large"></span>
+    <p>Loading comparison data...</p>
+  </div>
+</div>
+
+<!-- Error State -->
+<div id="error-section" class="error-section hidden">
+  <div class="error-icon">!</div>
+  <h2>Comparison Failed</h2>
+  <p id="error-message"></p>
+  <a href="/" class="btn">Start Over</a>
+</div>
+
+<!-- Comparison Results -->
+<div id="compare-section" class="compare-section hidden">
+  <!-- Album Headers -->
+  <div class="compare-albums-header">
+    <div class="album-header-card album-a">
+      <span class="album-label">Album A</span>
+      <h3 id="album-a-name">-</h3>
+      <p id="album-a-artist">-</p>
+      <span id="album-a-tracks" class="tracks-analyzed"></span>
+    </div>
+    <div class="album-header-card album-b">
+      <span class="album-label">Album B</span>
+      <h3 id="album-b-name">-</h3>
+      <p id="album-b-artist">-</p>
+      <span id="album-b-tracks" class="tracks-analyzed"></span>
+    </div>
+  </div>
+
+  <!-- Sentiment Comparison -->
+  <section class="compare-card">
+    <button class="accordion-header" data-section="sentiment">
+      <h2>Sentiment Comparison</h2>
+      <span class="accordion-icon">-</span>
+    </button>
+    <div class="accordion-content" id="sentiment-section">
+      <div class="sentiment-comparison">
+        <div class="overall-compare">
+          <div class="overall-item album-a-color">
+            <span class="overall-label">Album A</span>
+            <span id="sentiment-a" class="overall-score">0</span>
+          </div>
+          <div class="overall-item album-b-color">
+            <span class="overall-label">Album B</span>
+            <span id="sentiment-b" class="overall-score">0</span>
+          </div>
+        </div>
+        <div class="sentiment-delta" id="sentiment-delta"></div>
+        <div class="compare-highlights">
+          <div class="highlight-row">
+            <span class="highlight-label">Most Positive</span>
+            <span id="positive-a" class="album-a-color">-</span>
+            <span id="positive-b" class="album-b-color">-</span>
+          </div>
+          <div class="highlight-row">
+            <span class="highlight-label">Most Negative</span>
+            <span id="negative-a" class="album-a-color">-</span>
+            <span id="negative-b" class="album-b-color">-</span>
+          </div>
+        </div>
+
+        <!-- Track by Track -->
+        <div class="track-comparison">
+          <h4>Track by Track</h4>
+          <div class="track-charts">
+            <div class="track-chart-column">
+              <span class="track-chart-label album-a-color">Album A</span>
+              <div id="tracks-a" class="track-bars"></div>
+            </div>
+            <div class="track-chart-column">
+              <span class="track-chart-label album-b-color">Album B</span>
+              <div id="tracks-b" class="track-bars"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Vocabulary Comparison -->
+  <section class="compare-card">
+    <button class="accordion-header" data-section="vocabulary">
+      <h2>Vocabulary Comparison</h2>
+      <span class="accordion-icon">+</span>
+    </button>
+    <div class="accordion-content collapsed" id="vocabulary-section">
+      <div class="vocab-comparison">
+        <div class="vocab-grid">
+          <div class="vocab-stat">
+            <span class="vocab-label">Total Words</span>
+            <span id="words-a" class="album-a-color">-</span>
+            <span id="words-b" class="album-b-color">-</span>
+          </div>
+          <div class="vocab-stat">
+            <span class="vocab-label">Unique Words</span>
+            <span id="unique-a" class="album-a-color">-</span>
+            <span id="unique-b" class="album-b-color">-</span>
+          </div>
+          <div class="vocab-stat">
+            <span class="vocab-label">Vocabulary Richness</span>
+            <span id="richness-a" class="album-a-color">-</span>
+            <span id="richness-b" class="album-b-color">-</span>
+          </div>
+          <div class="vocab-stat">
+            <span class="vocab-label">Songs Analyzed</span>
+            <span id="songs-a" class="album-a-color">-</span>
+            <span id="songs-b" class="album-b-color">-</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Theme Overlap -->
+  <section class="compare-card">
+    <button class="accordion-header" data-section="themes">
+      <h2>Theme Overlap</h2>
+      <span class="accordion-icon">+</span>
+    </button>
+    <div class="accordion-content collapsed" id="themes-section">
+      <p class="section-description">Top words that appear in each album's lyrics.</p>
+      <div class="theme-overlap">
+        <div class="theme-group">
+          <h4 class="album-a-color">Only in Album A</h4>
+          <div id="themes-only-a" class="theme-tags"></div>
+        </div>
+        <div class="theme-group shared">
+          <h4>Shared</h4>
+          <div id="themes-shared" class="theme-tags"></div>
+        </div>
+        <div class="theme-group">
+          <h4 class="album-b-color">Only in Album B</h4>
+          <div id="themes-only-b" class="theme-tags"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Discovered Themes in Common (LDA) -->
+  <section class="compare-card">
+    <button class="accordion-header" data-section="discovered">
+      <h2>Discovered Themes in Common</h2>
+      <span class="accordion-icon">+</span>
+    </button>
+    <div class="accordion-content collapsed" id="discovered-section">
+      <p class="section-description">Topics discovered by LDA (Latent Dirichlet Allocation) analyzing lyrics from both albums together.</p>
+      <div id="discovered-topics" class="discovered-topics">
+        <div class="discovered-loading">
+          <span class="spinner"></span>
+          <span>Analyzing combined lyrics...</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Actions -->
+  <div class="compare-actions">
+    <a href="/" class="btn">Analyze Another Album</a>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const JOB_ID_A = "{{ job_id_a }}";
+  const JOB_ID_B = "{{ job_id_b }}";
+</script>
+<script src="{{ url_for('static', filename='compare.js') }}"></script>
+{% endblock %}

@@ -262,6 +262,99 @@ def _parse_topic_words(topic_string: str) -> List[Tuple[str, float]]:
     return words
 
 
+def run_combined_lda(songs_a: List[Dict], songs_b: List[Dict], num_topics: int = 5,
+                     passes: int = 10, random_state: int = 42) -> List[Dict]:
+    """
+    Run LDA topic modeling on combined lyrics from two albums.
+
+    This discovers themes that are shared across both albums by treating
+    all songs as a single corpus.
+
+    Args:
+        songs_a: List of preprocessed song dicts from album A
+        songs_b: List of preprocessed song dicts from album B
+        num_topics: Number of topics to discover
+        passes: Number of training passes
+        random_state: Random seed for reproducibility
+
+    Returns:
+        List of topic dicts with: id, name, keywords, weight
+    """
+    combined_songs = songs_a + songs_b
+
+    logger.info(f"=== COMBINED LDA: {len(songs_a)} + {len(songs_b)} = {len(combined_songs)} songs ===")
+
+    if not combined_songs:
+        logger.warning("No songs for combined LDA")
+        return []
+
+    # Merge stem_to_word mappings from both albums
+    stem_to_word = {}
+    for song in combined_songs:
+        song_mapping = song.get('stem_to_word', {})
+        for stem, word in song_mapping.items():
+            if stem not in stem_to_word:
+                stem_to_word[stem] = word
+
+    # Extract token lists
+    token_lists = [song.get('tokens', []) for song in combined_songs]
+    token_lists = [t for t in token_lists if t]
+
+    if not token_lists:
+        logger.warning("No tokens available for combined LDA")
+        return []
+
+    logger.info(f"Building vocabulary from {len(token_lists)} combined documents...")
+
+    # Adjust num_topics if not enough documents
+    if len(token_lists) < num_topics:
+        num_topics = max(2, len(token_lists) // 2)
+        logger.info(f"Adjusted num_topics to {num_topics} due to small corpus")
+
+    try:
+        # Create dictionary
+        dictionary = corpora.Dictionary(token_lists)
+        logger.info(f"Combined dictionary size: {len(dictionary)} unique terms")
+
+        # Filter extremes - be less aggressive since we're combining
+        dictionary.filter_extremes(no_below=2, no_above=0.6)
+
+        if len(dictionary) < 10:
+            logger.warning("Dictionary too small after filtering, resetting")
+            dictionary = corpora.Dictionary(token_lists)
+
+        # Create corpus
+        corpus = [dictionary.doc2bow(tokens) for tokens in token_lists]
+        logger.info(f"Created combined corpus with {len(corpus)} documents")
+
+        # Train LDA model
+        logger.info(f"Training combined LDA model ({passes} passes)...")
+        lda_model = LdaModel(
+            corpus=corpus,
+            id2word=dictionary,
+            num_topics=num_topics,
+            passes=passes,
+            random_state=random_state,
+            alpha='auto',
+            eta='auto'
+        )
+
+        # Extract topics
+        logger.info("Extracting combined topics...")
+        topics = _extract_topics(lda_model, num_topics, stem_to_word)
+
+        for topic in topics:
+            top_words = list(topic['keywords'].keys())[:5]
+            logger.info(f"  Combined Topic '{topic['name']}': {', '.join(top_words)}")
+
+        logger.info(f"=== COMBINED LDA COMPLETE: {len(topics)} shared topics discovered ===")
+        return topics
+
+    except Exception as e:
+        logger.error(f"Combined LDA analysis failed: {e}")
+        return []
+
+
 def assign_topics_to_songs(songs: List[Dict], num_topics: int = 7,
                            random_state: int = 42) -> List[Dict]:
     """

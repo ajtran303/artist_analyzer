@@ -21,12 +21,26 @@ document.addEventListener("DOMContentLoaded", function () {
   const artistDisplay = document.getElementById("artist-display");
   const albumGrid = document.getElementById("album-grid");
 
+  // Compare mode elements
+  const compareBanner = document.getElementById("compare-banner");
+  const compareAlbumName = document.getElementById("compare-album-name");
+  const cancelCompareBtn = document.getElementById("cancel-compare");
+
+  // Analysis progress elements (for compare mode)
+  const analysisSection = document.getElementById("analysis-section");
+  const analysisStatusText = document.getElementById("analysis-status-text");
+  const analysisProgressFill = document.getElementById("analysis-progress-fill");
+  const analysisProgressPercent = document.getElementById("analysis-progress-percent");
+  const analysisFunFact = document.getElementById("analysis-fun-fact");
+
   // State
   let selectedAlbum = null;
   let currentArtist = null;
   let currentArtistId = null;
   let currentArtistName = null;
   let isAnalyzing = false;
+  let isCompareMode = false;
+  let compareAlbumA = null;
 
   // Pagination state
   let currentPage = 1;
@@ -37,6 +51,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Fun facts interval
   let funFactInterval = null;
+  let analysisPollInterval = null;
+  let analysisFunFactInterval = null;
+
+  // Check for compare mode on load
+  initCompareMode();
 
   // Fun facts about lyrics and music
   const funFacts = [
@@ -297,7 +316,13 @@ document.addEventListener("DOMContentLoaded", function () {
       const data = await response.json();
 
       if (response.ok) {
-        window.location.href = `/results/${data.job_id}`;
+        if (isCompareMode && compareAlbumA) {
+          // Show progress UI on this page for compare mode
+          showAnalysisProgress(data.job_id);
+        } else {
+          // Normal mode - redirect to results page
+          window.location.href = `/results/${data.job_id}`;
+        }
       } else {
         showError(data.error || "Failed to start analysis");
         resetAnalyzeButton(button);
@@ -307,6 +332,104 @@ document.addEventListener("DOMContentLoaded", function () {
       showError("Network error. Please try again.");
       resetAnalyzeButton(button);
     }
+  }
+
+  // Analysis progress for compare mode
+  function showAnalysisProgress(jobId) {
+    // Hide other sections
+    albumSection.classList.add("hidden");
+    compareBanner.classList.add("hidden");
+
+    // Show analysis section
+    analysisSection.classList.remove("hidden");
+
+    // Start fun facts rotation
+    showAnalysisFunFact();
+    analysisFunFactInterval = setInterval(showAnalysisFunFact, 10000);
+
+    // Start polling for status
+    pollAnalysisStatus(jobId);
+    analysisPollInterval = setInterval(() => pollAnalysisStatus(jobId), 2000);
+  }
+
+  async function pollAnalysisStatus(jobId) {
+    try {
+      const response = await fetch(`/api/analyze/${jobId}`);
+      const data = await response.json();
+
+      if (data.status === "completed") {
+        clearInterval(analysisPollInterval);
+        clearInterval(analysisFunFactInterval);
+        updateAnalysisProgress(data.total_stages, data.total_stages);
+        updateAnalysisSteps(data.total_stages);
+
+        // Redirect to compare page
+        setTimeout(() => {
+          localStorage.removeItem("compareAlbumA");
+          window.location.href = `/compare?a=${compareAlbumA.job_id}&b=${jobId}`;
+        }, 500);
+      } else if (data.status === "failed") {
+        clearInterval(analysisPollInterval);
+        clearInterval(analysisFunFactInterval);
+        analysisSection.classList.add("hidden");
+        showError(data.error || "Analysis failed");
+      } else {
+        // Still processing
+        analysisStatusText.textContent = data.progress || "Processing...";
+        updateAnalysisProgress(data.stage || 0, data.total_stages || 6, data.sub_current, data.sub_total);
+        updateAnalysisSteps(data.stage || 0);
+      }
+    } catch (error) {
+      console.error("Error polling status:", error);
+    }
+  }
+
+  function updateAnalysisProgress(stage, totalStages, subCurrent, subTotal) {
+    const stageProgress = (stage - 1) / totalStages;
+    let subProgress = 0;
+    if (subCurrent && subTotal && subTotal > 0) {
+      subProgress = (subCurrent / subTotal) / totalStages;
+    }
+    const percent = Math.round(Math.max(0, (stageProgress + subProgress)) * 100);
+    analysisProgressFill.style.width = `${percent}%`;
+    analysisProgressPercent.textContent = `${percent}%`;
+  }
+
+  function updateAnalysisSteps(currentStage) {
+    const steps = analysisSection.querySelectorAll(".step");
+    steps.forEach((step) => {
+      const stepNum = parseInt(step.dataset.step);
+      const iconEl = step.querySelector(".step-icon");
+
+      step.classList.remove("completed", "active", "pending");
+
+      if (stepNum < currentStage) {
+        step.classList.add("completed");
+        iconEl.textContent = "✓";
+      } else if (stepNum === currentStage) {
+        step.classList.add("active");
+        iconEl.textContent = "●";
+      } else {
+        step.classList.add("pending");
+        iconEl.textContent = "○";
+      }
+    });
+
+    const connectors = analysisSection.querySelectorAll(".step-connector");
+    connectors.forEach((connector, index) => {
+      connector.classList.remove("completed");
+      if (index + 1 < currentStage) {
+        connector.classList.add("completed");
+      }
+    });
+  }
+
+  function showAnalysisFunFact() {
+    analysisFunFact.classList.remove("fade-in");
+    void analysisFunFact.offsetWidth;
+    const randomIndex = Math.floor(Math.random() * funFacts.length);
+    analysisFunFact.textContent = funFacts[randomIndex];
+    analysisFunFact.classList.add("fade-in");
   }
 
   function resetAnalyzeButton(button) {
@@ -370,5 +493,50 @@ document.addEventListener("DOMContentLoaded", function () {
     const randomIndex = Math.floor(Math.random() * funFacts.length);
     loadingFunFact.textContent = funFacts[randomIndex];
     loadingFunFact.classList.add("fade-in");
+  }
+
+  // Compare mode functions
+  function initCompareMode() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const compareParam = urlParams.get("compare");
+
+    // Check if we have a stored album for comparison
+    const storedAlbum = localStorage.getItem("compareAlbumA");
+
+    if (compareParam === "true" && storedAlbum) {
+      try {
+        compareAlbumA = JSON.parse(storedAlbum);
+        isCompareMode = true;
+        showCompareBanner();
+      } catch (e) {
+        // Invalid stored data, clear it
+        localStorage.removeItem("compareAlbumA");
+      }
+    }
+
+    // Set up cancel button
+    if (cancelCompareBtn) {
+      cancelCompareBtn.addEventListener("click", cancelCompareMode);
+    }
+  }
+
+  function showCompareBanner() {
+    if (!compareBanner || !compareAlbumA) return;
+
+    const displayName = `${compareAlbumA.album} - ${compareAlbumA.artist}`;
+    compareAlbumName.textContent = displayName;
+    compareBanner.classList.remove("hidden");
+  }
+
+  function cancelCompareMode() {
+    isCompareMode = false;
+    compareAlbumA = null;
+    localStorage.removeItem("compareAlbumA");
+    compareBanner.classList.add("hidden");
+
+    // Remove compare param from URL
+    const url = new URL(window.location);
+    url.searchParams.delete("compare");
+    window.history.replaceState({}, "", url);
   }
 });

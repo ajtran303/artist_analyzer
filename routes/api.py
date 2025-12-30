@@ -357,6 +357,99 @@ def get_results(job_id):
         return jsonify({'error': 'Internal server error'}), 500
 
 
+@api_bp.route('/compare', methods=['GET'])
+def compare_albums():
+    """
+    Get data for comparing two albums.
+
+    Query params:
+        a: Job ID for album A
+        b: Job ID for album B
+
+    Returns:
+        {album_a: {...}, album_b: {...}, shared_topics: [...]}
+    """
+    from models import Song
+    from pipeline.preprocessor import preprocess_lyrics
+    from pipeline.lda_analyzer import run_combined_lda
+
+    job_id_a = request.args.get('a', '')
+    job_id_b = request.args.get('b', '')
+
+    # Validate job IDs
+    if not job_id_a or not job_id_b:
+        return jsonify({'error': 'Both album IDs (a and b) are required'}), 400
+
+    if job_id_a == job_id_b:
+        return jsonify({'error': 'Cannot compare an album with itself'}), 400
+
+    # Validate format
+    for job_id in [job_id_a, job_id_b]:
+        if len(job_id) > 50 or not re.match(r'^[\w\-]+$', job_id):
+            return jsonify({'error': 'Invalid job_id format'}), 400
+
+    try:
+        analysis_a = Analysis.get_by_job_id(job_id_a)
+        analysis_b = Analysis.get_by_job_id(job_id_b)
+
+        if not analysis_a:
+            return jsonify({'error': f'Album A not found (job_id: {job_id_a})'}), 404
+        if not analysis_b:
+            return jsonify({'error': f'Album B not found (job_id: {job_id_b})'}), 404
+
+        # Check if both are completed
+        if analysis_a.status != 'completed':
+            return jsonify({
+                'error': f'Album A analysis not completed (status: {analysis_a.status})'
+            }), 400
+        if analysis_b.status != 'completed':
+            return jsonify({
+                'error': f'Album B analysis not completed (status: {analysis_b.status})'
+            }), 400
+
+        # Run combined LDA on songs from both albums
+        shared_topics = []
+        try:
+            # Fetch songs from database
+            songs_a = Song.get_by_analysis(analysis_a.id)
+            songs_b = Song.get_by_analysis(analysis_b.id)
+
+            # Convert to dicts with lyrics for preprocessing
+            songs_a_data = [{'title': s.title, 'lyrics': s.lyrics} for s in songs_a if s.lyrics]
+            songs_b_data = [{'title': s.title, 'lyrics': s.lyrics} for s in songs_b if s.lyrics]
+
+            if songs_a_data and songs_b_data:
+                # Preprocess both sets
+                processed_a = preprocess_lyrics(songs_a_data)
+                processed_b = preprocess_lyrics(songs_b_data)
+
+                # Run combined LDA
+                shared_topics = run_combined_lda(processed_a, processed_b, num_topics=5)
+        except Exception as lda_error:
+            logger.warning(f"Combined LDA failed (non-fatal): {lda_error}")
+            # Continue without shared topics
+
+        return jsonify({
+            'album_a': {
+                'job_id': job_id_a,
+                'artist': analysis_a.artist_name,
+                'album': analysis_a.album_name,
+                'results': analysis_a.results
+            },
+            'album_b': {
+                'job_id': job_id_b,
+                'artist': analysis_b.artist_name,
+                'album': analysis_b.album_name,
+                'results': analysis_b.results
+            },
+            'shared_topics': shared_topics
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Error comparing albums: {type(e).__name__}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+
 @api_bp.route('/health', methods=['GET'])
 def health_check():
     """
