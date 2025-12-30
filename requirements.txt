@@ -1,0 +1,31 @@
+# Core
+Flask==3.0.0
+gunicorn==21.2.0
+celery[redis]==5.3.4
+redis>=4.5.2,<5.0.0
+
+# Database
+Flask-SQLAlchemy==3.1.1
+SQLAlchemy==2.0.23
+psycopg2-binary==2.9.9
+alembic==1.13.0
+
+# NLP
+gensim>=4.3.2
+textblob==0.17.1
+nltk==3.8.1
+
+# Scraping
+requests==2.31.0
+beautifulsoup4==4.12.2
+lyricsgenius==3.0.1
+
+# Utilities
+python-dotenv==1.0.0
+
+# Security
+Flask-Limiter==3.5.0
+Flask-Talisman==1.1.0
+Flask-Cors==4.0.0
+Flask-WTF==1.2.1
+bleach==6.1.0

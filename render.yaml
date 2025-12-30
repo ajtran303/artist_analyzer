@@ -1,0 +1,87 @@
+# Render Blueprint Specification
+# https://render.com/docs/blueprint-spec
+#
+# Deploy: Connect repo to Render, it will auto-detect this file
+# Or manually: render blueprint apply
+
+services:
+  # Web Service (Flask + Gunicorn)
+  - type: web
+    name: artist-analyzer-web
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerCommand: >
+      gunicorn app:app
+      --bind 0.0.0.0:$PORT
+      --workers 2
+      --timeout 120
+      --access-logfile -
+      --error-logfile -
+      --log-level info
+      --max-requests 1000
+      --max-requests-jitter 100
+    healthCheckPath: /api/health
+    plan: starter
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: GENIUS_API_TOKEN
+        sync: false  # Set manually in Render dashboard
+      - key: DATABASE_URL
+        fromDatabase:
+          name: artist-analyzer-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: artist-analyzer-redis
+          property: connectionString
+      - key: FORCE_HTTPS
+        value: "false"  # Render handles SSL termination at load balancer
+      - key: CORS_ORIGINS
+        value: "*"  # Update with your domain after deployment
+
+  # Background Worker (Celery)
+  - type: worker
+    name: artist-analyzer-worker
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerCommand: >
+      celery -A celery_app.celery worker
+      --loglevel=info
+      --concurrency=2
+      --max-tasks-per-child=500
+      --time-limit=3600
+      --soft-time-limit=3300
+    plan: starter
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: GENIUS_API_TOKEN
+        sync: false  # Set manually in Render dashboard
+      - key: DATABASE_URL
+        fromDatabase:
+          name: artist-analyzer-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: artist-analyzer-redis
+          property: connectionString
+
+  # Redis (for Celery broker and result backend)
+  - type: redis
+    name: artist-analyzer-redis
+    plan: starter
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []  # Only allow internal connections
+
+databases:
+  - name: artist-analyzer-db
+    databaseName: artist_analyzer
+    user: analyzer_user
+    plan: starter
