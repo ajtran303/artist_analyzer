@@ -416,6 +416,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Compare feature functions
   function setupCompareButton() {
+    const compareBottomBtn = document.getElementById("compare-bottom-btn");
+
     // Check if we're already in compare mode (have album A stored)
     const storedAlbum = localStorage.getItem("compareAlbumA");
 
@@ -434,6 +436,9 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     compareBtn.addEventListener("click", handleCompareClick);
+    if (compareBottomBtn) {
+      compareBottomBtn.addEventListener("click", handleCompareClick);
+    }
   }
 
   function handleCompareClick() {
