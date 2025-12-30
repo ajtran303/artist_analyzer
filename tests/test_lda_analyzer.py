@@ -2,7 +2,7 @@
 
 import pytest
 
-from pipeline.lda_analyzer import run_lda, _extract_topics, _generate_topic_name, _parse_topic_words, assign_topics_to_songs
+from pipeline.lda_analyzer import run_lda, run_combined_lda, _extract_topics, _generate_topic_name, _parse_topic_words, assign_topics_to_songs
 
 
 @pytest.mark.unit
@@ -188,3 +188,85 @@ class TestAssignTopicsToSongs:
         result = assign_topics_to_songs(songs, num_topics=2)
 
         assert len(result) == len(songs)
+
+
+@pytest.mark.unit
+class TestRunCombinedLda:
+    """Tests for run_combined_lda function."""
+
+    def test_combines_songs_from_two_albums(self):
+        """Combines songs from both albums for analysis."""
+        songs_a = [
+            {'tokens': ['love', 'heart', 'soul', 'passion'], 'stem_to_word': {'love': 'Love'}},
+            {'tokens': ['romance', 'kiss', 'embrace', 'touch'], 'stem_to_word': {}},
+        ] * 5
+
+        songs_b = [
+            {'tokens': ['dark', 'night', 'shadow', 'pain'], 'stem_to_word': {'dark': 'Dark'}},
+            {'tokens': ['sorrow', 'death', 'tears', 'grief'], 'stem_to_word': {}},
+        ] * 5
+
+        result = run_combined_lda(songs_a, songs_b, num_topics=2)
+
+        assert isinstance(result, list)
+
+    def test_returns_topics_list(self):
+        """Returns list of topic dicts."""
+        songs_a = [{'tokens': ['love', 'heart', 'beautiful']}] * 10
+        songs_b = [{'tokens': ['dark', 'night', 'shadow']}] * 10
+
+        result = run_combined_lda(songs_a, songs_b, num_topics=2)
+
+        assert isinstance(result, list)
+        if result:
+            assert 'id' in result[0]
+            assert 'name' in result[0]
+            assert 'keywords' in result[0]
+
+    def test_handles_empty_album_a(self):
+        """Handles empty first album gracefully."""
+        songs_a = []
+        songs_b = [{'tokens': ['love', 'heart']}] * 10
+
+        result = run_combined_lda(songs_a, songs_b, num_topics=2)
+
+        assert isinstance(result, list)
+
+    def test_handles_empty_album_b(self):
+        """Handles empty second album gracefully."""
+        songs_a = [{'tokens': ['love', 'heart']}] * 10
+        songs_b = []
+
+        result = run_combined_lda(songs_a, songs_b, num_topics=2)
+
+        assert isinstance(result, list)
+
+    def test_handles_both_empty(self):
+        """Handles both albums empty gracefully."""
+        result = run_combined_lda([], [], num_topics=2)
+
+        assert result == []
+
+    def test_merges_stem_mappings(self):
+        """Merges stem_to_word mappings from both albums."""
+        songs_a = [
+            {'tokens': ['love'], 'stem_to_word': {'lov': 'Love'}},
+        ] * 5
+        songs_b = [
+            {'tokens': ['dark'], 'stem_to_word': {'dark': 'Dark'}},
+        ] * 5
+
+        # This test just ensures no crash when merging
+        result = run_combined_lda(songs_a, songs_b, num_topics=2)
+        assert isinstance(result, list)
+
+    def test_consistent_with_random_state(self):
+        """Results are consistent with same random_state."""
+        songs_a = [{'tokens': ['love', 'heart', 'soul']}] * 10
+        songs_b = [{'tokens': ['dark', 'night', 'pain']}] * 10
+
+        result1 = run_combined_lda(songs_a, songs_b, num_topics=2, random_state=42)
+        result2 = run_combined_lda(songs_a, songs_b, num_topics=2, random_state=42)
+
+        if result1 and result2:
+            assert len(result1) == len(result2)

@@ -278,3 +278,157 @@ class TestErrorResponses:
 
         # Flask returns 400 for malformed JSON
         assert response.status_code in [400, 415]
+
+
+@pytest.mark.unit
+class TestCompareAlbums:
+    """Tests for GET /api/compare endpoint."""
+
+    def test_compare_two_completed_albums(self, client, db_session):
+        """Returns comparison data for two completed albums."""
+        from datetime import datetime
+        from models import Analysis, Song
+
+        # Create two completed analyses
+        analysis_a = Analysis(
+            artist_name='Artist A',
+            album_id=11111,
+            album_name='Album A',
+            job_id='compare-job-a',
+            status='completed',
+            results={
+                'songs_count': 2,
+                'total_tracks': 2,
+                'sentiment': {'overall': 0.5, 'by_song': []},
+                'stats': {'total_words': 100, 'unique_words': 50, 'vocabulary_richness': 0.5}
+            },
+            completed_at=datetime.utcnow()
+        )
+        analysis_b = Analysis(
+            artist_name='Artist B',
+            album_id=22222,
+            album_name='Album B',
+            job_id='compare-job-b',
+            status='completed',
+            results={
+                'songs_count': 2,
+                'total_tracks': 2,
+                'sentiment': {'overall': -0.2, 'by_song': []},
+                'stats': {'total_words': 80, 'unique_words': 40, 'vocabulary_richness': 0.5}
+            },
+            completed_at=datetime.utcnow()
+        )
+        db_session.add(analysis_a)
+        db_session.add(analysis_b)
+        db_session.commit()
+
+        # Add songs for LDA analysis
+        Song.create(analysis_id=analysis_a.id, artist_name='Artist A', title='Song A1', lyrics='love heart soul passion')
+        Song.create(analysis_id=analysis_a.id, artist_name='Artist A', title='Song A2', lyrics='dark night shadow pain')
+        Song.create(analysis_id=analysis_b.id, artist_name='Artist B', title='Song B1', lyrics='love romance kiss heart')
+        Song.create(analysis_id=analysis_b.id, artist_name='Artist B', title='Song B2', lyrics='light hope dream future')
+
+        response = client.get('/api/compare?a=compare-job-a&b=compare-job-b')
+
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert 'album_a' in data
+        assert 'album_b' in data
+        assert data['album_a']['album'] == 'Album A'
+        assert data['album_b']['album'] == 'Album B'
+
+    def test_compare_missing_job_ids(self, client):
+        """Returns 400 when job IDs are missing."""
+        response = client.get('/api/compare')
+        assert response.status_code == 400
+
+        response = client.get('/api/compare?a=job-a')
+        assert response.status_code == 400
+
+        response = client.get('/api/compare?b=job-b')
+        assert response.status_code == 400
+
+    def test_compare_same_album(self, client):
+        """Returns 400 when comparing album with itself."""
+        response = client.get('/api/compare?a=same-job&b=same-job')
+
+        assert response.status_code == 400
+        data = json.loads(response.data)
+        assert 'itself' in data['error'].lower()
+
+    def test_compare_nonexistent_album(self, client, db_session):
+        """Returns 404 when album not found."""
+        response = client.get('/api/compare?a=nonexistent-a&b=nonexistent-b')
+
+        assert response.status_code == 404
+
+    def test_compare_incomplete_album(self, client, db_session):
+        """Returns 400 when album analysis not completed."""
+        from datetime import datetime
+        from models import Analysis
+
+        # Create one completed, one processing
+        analysis_a = Analysis(
+            artist_name='Artist A',
+            album_id=33333,
+            album_name='Album A',
+            job_id='complete-job',
+            status='completed',
+            results={'sentiment': {'overall': 0}},
+            completed_at=datetime.utcnow()
+        )
+        analysis_b = Analysis(
+            artist_name='Artist B',
+            album_id=44444,
+            album_name='Album B',
+            job_id='processing-job',
+            status='processing'
+        )
+        db_session.add(analysis_a)
+        db_session.add(analysis_b)
+        db_session.commit()
+
+        response = client.get('/api/compare?a=complete-job&b=processing-job')
+
+        assert response.status_code == 400
+        data = json.loads(response.data)
+        assert 'not completed' in data['error']
+
+    def test_compare_returns_shared_topics(self, client, db_session):
+        """Returns shared_topics in response."""
+        from datetime import datetime
+        from models import Analysis, Song
+
+        analysis_a = Analysis(
+            artist_name='Artist A',
+            album_id=55555,
+            album_name='Album A',
+            job_id='topics-job-a',
+            status='completed',
+            results={'sentiment': {'overall': 0}},
+            completed_at=datetime.utcnow()
+        )
+        analysis_b = Analysis(
+            artist_name='Artist B',
+            album_id=66666,
+            album_name='Album B',
+            job_id='topics-job-b',
+            status='completed',
+            results={'sentiment': {'overall': 0}},
+            completed_at=datetime.utcnow()
+        )
+        db_session.add(analysis_a)
+        db_session.add(analysis_b)
+        db_session.commit()
+
+        # Add songs with lyrics
+        for i in range(5):
+            Song.create(analysis_id=analysis_a.id, artist_name='Artist A', title=f'Song A{i}', lyrics='love heart soul passion romance')
+            Song.create(analysis_id=analysis_b.id, artist_name='Artist B', title=f'Song B{i}', lyrics='love dream hope light future')
+
+        response = client.get('/api/compare?a=topics-job-a&b=topics-job-b')
+
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert 'shared_topics' in data
+        assert isinstance(data['shared_topics'], list)

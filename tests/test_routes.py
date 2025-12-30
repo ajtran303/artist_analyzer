@@ -60,3 +60,29 @@ class TestHealthRoute:
         with patch('routes.api.check_db_health', return_value=True):
             response = client.get('/api/health')
             assert response.status_code == 200
+
+
+@pytest.mark.unit
+class TestCompareRoute:
+    """Tests for GET /compare route."""
+
+    def test_returns_200(self, client):
+        """Returns 200 OK."""
+        response = client.get('/compare?a=job-a&b=job-b')
+        assert response.status_code == 200
+
+    def test_returns_html(self, client):
+        """Returns HTML page."""
+        response = client.get('/compare?a=job-a&b=job-b')
+        assert b'<!DOCTYPE html>' in response.data or b'<html' in response.data
+
+    def test_passes_job_ids_to_template(self, client):
+        """Job IDs are available in the page."""
+        response = client.get('/compare?a=test-job-a&b=test-job-b')
+        assert b'test-job-a' in response.data
+        assert b'test-job-b' in response.data
+
+    def test_has_compare_section(self, client):
+        """Page has compare section elements."""
+        response = client.get('/compare?a=job-a&b=job-b')
+        assert b'compare' in response.data.lower()
