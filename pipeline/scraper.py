@@ -13,6 +13,36 @@ logger = logging.getLogger(__name__)
 GENIUS_TOKEN = os.environ.get('GENIUS_API_TOKEN', '')
 
 
+def _get_browser_headers():
+    """Get browser-like headers to avoid blocking."""
+    return {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Referer': 'https://genius.com/',
+        'DNT': '1',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+    }
+
+
+def _get_api_headers():
+    """Get headers for Genius API calls."""
+    return {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Referer': 'https://genius.com/',
+        'Origin': 'https://genius.com',
+        'DNT': '1',
+        'Connection': 'keep-alive',
+        'Sec-Fetch-Dest': 'empty',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'same-origin',
+    }
+
+
 class ScraperError(Exception):
     """Custom exception for scraper errors."""
     pass
@@ -34,20 +64,31 @@ def _get_public_api():
     return api
 
 
-def _search_artist_public(artist_name):
-    """Search for artist using web scraping (no auth required)."""
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'application/json, text/plain, */*',
-        'Accept-Language': 'en-US,en;q=0.9',
-    }
+def _search_artist_authenticated(artist_name):
+    """Search for artist using authenticated Genius API."""
+    genius = _get_genius_client()
+    if not genius:
+        return None, None
 
+    try:
+        # Use lyricsgenius search which uses the official API
+        result = genius.search_artist(artist_name, max_songs=0, get_full_info=False)
+        if result:
+            return result.id, result.name
+        return None, None
+    except Exception as e:
+        logger.warning(f"Authenticated search failed: {e}")
+        return None, None
+
+
+def _search_artist_public(artist_name):
+    """Search for artist using web scraping (fallback)."""
     try:
         # Use Genius search API with browser headers
         response = requests.get(
             'https://genius.com/api/search/multi',
             params={'q': artist_name},
-            headers=headers,
+            headers=_get_api_headers(),
             timeout=30
         )
         response.raise_for_status()
@@ -82,8 +123,21 @@ def _search_artist_public(artist_name):
         return None, None
 
     except Exception as e:
-        logger.error(f"Error searching artist: {e}")
+        logger.error(f"Error searching artist (public): {e}")
         return None, None
+
+
+def _search_artist(artist_name):
+    """Search for artist - tries authenticated API first, falls back to public."""
+    # Try authenticated API first (more reliable)
+    artist_id, artist_name_found = _search_artist_authenticated(artist_name)
+    if artist_id:
+        logger.info(f"Found artist via authenticated API: {artist_name_found}")
+        return artist_id, artist_name_found
+
+    # Fall back to public API
+    logger.info("Falling back to public API search...")
+    return _search_artist_public(artist_name)
 
 
 def scrape_genius(artist_name, max_songs=50, albums_only=True):
@@ -99,8 +153,8 @@ def scrape_genius(artist_name, max_songs=50, albums_only=True):
         List of dicts with: title, artist, album, year, lyrics, url
     """
     try:
-        # Search for the artist using public API
-        artist_id, found_name = _search_artist_public(artist_name)
+        # Search for the artist (tries authenticated first, then public)
+        artist_id, found_name = _search_artist(artist_name)
         if not artist_id:
             logger.warning(f"Artist not found: {artist_name}")
             return []
@@ -120,10 +174,6 @@ def scrape_genius(artist_name, max_songs=50, albums_only=True):
 
 def _get_artist_songs_public(artist_id, artist_name, max_songs=50):
     """Get songs for an artist using public API."""
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'application/json, text/plain, */*',
-    }
     songs = []
     page = 1
 
@@ -132,7 +182,7 @@ def _get_artist_songs_public(artist_id, artist_name, max_songs=50):
             response = requests.get(
                 f'https://genius.com/api/artists/{artist_id}/songs',
                 params={'per_page': 20, 'page': page, 'sort': 'popularity'},
-                headers=headers,
+                headers=_get_api_headers(),
                 timeout=30
             )
             response.raise_for_status()
@@ -212,16 +262,11 @@ def _get_songs_from_albums(artist_id, artist_name, max_songs=50):
 
 def _get_unique_albums(public_api, artist_id):
     """Get deduplicated albums for an artist."""
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'application/json, text/plain, */*',
-    }
-
     try:
         response = requests.get(
             f'https://genius.com/api/artists/{artist_id}/albums',
             params={'per_page': 50},
-            headers=headers,
+            headers=_get_api_headers(),
             timeout=30
         )
         response.raise_for_status()
@@ -249,16 +294,11 @@ def _get_unique_albums(public_api, artist_id):
 
 def _get_album_tracks(public_api, album_id):
     """Get tracks from a specific album."""
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'application/json, text/plain, */*',
-    }
-
     try:
         response = requests.get(
             f'https://genius.com/api/albums/{album_id}/tracks',
             params={'per_page': 50},
-            headers=headers,
+            headers=_get_api_headers(),
             timeout=30
         )
         response.raise_for_status()
@@ -280,7 +320,7 @@ def _scrape_lyrics_from_url(url, retries=3):
 
     for attempt in range(retries):
         try:
-            response = requests.get(url, timeout=30)
+            response = requests.get(url, headers=_get_browser_headers(), timeout=30)
             if response.status_code == 404:
                 return ''
             response.raise_for_status()
@@ -370,8 +410,8 @@ def search_artist_albums(artist_name):
     public_api = _get_public_api()
 
     try:
-        # Search for the artist using public API
-        artist_id, found_name = _search_artist_public(artist_name)
+        # Search for the artist (tries authenticated first, then public)
+        artist_id, found_name = _search_artist(artist_name)
         if not artist_id:
             return None
 
