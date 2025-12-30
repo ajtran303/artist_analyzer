@@ -194,7 +194,7 @@ def _get_songs_from_albums(artist_id, artist_name, max_songs=50):
     """Get songs from official albums only."""
     public_api = _get_public_api()
 
-    albums = _get_unique_albums(public_api, artist_id)
+    albums = _get_unique_albums(public_api, artist_id, artist_name=artist_name)
     songs = []
 
     for album in albums:
@@ -229,7 +229,7 @@ def _get_songs_from_albums(artist_id, artist_name, max_songs=50):
     return songs
 
 
-def _get_unique_albums(public_api, artist_id):
+def _get_unique_albums(public_api, artist_id, artist_name=None):
     """Get deduplicated albums for an artist using official API only."""
     genius = _get_genius_client()
     if not genius:
@@ -237,56 +237,48 @@ def _get_unique_albums(public_api, artist_id):
         return []
 
     try:
-        # Fetch multiple pages of songs to get more albums
-        all_songs = []
-        page = 1
-        max_pages = 3  # Limit to avoid too many requests
+        # Method 1: Try search_albums if we have artist name
+        if artist_name:
+            logger.info(f"Searching albums for: {artist_name}")
+            albums_data = genius.search_albums(artist_name)
 
-        while page <= max_pages:
-            logger.info(f"Fetching artist songs page {page}...")
-            songs_data = genius.artist_songs(artist_id, per_page=50, page=page, sort='release_date')
+            if albums_data:
+                hits = albums_data.get('sections', [{}])[0].get('hits', [])
+                logger.info(f"Found {len(hits)} album search results")
 
-            if not songs_data:
-                break
+                unique_albums = []
+                seen = set()
 
-            songs = songs_data.get('songs', [])
-            if not songs:
-                break
+                for hit in hits:
+                    album = hit.get('result', {})
+                    # Check if album is by the right artist
+                    album_artist = album.get('artist', {}).get('name', '')
+                    if album_artist.lower() == artist_name.lower():
+                        name = album.get('name', '')
+                        normalized = _normalize_album_name(name)
+                        if normalized and normalized not in seen:
+                            seen.add(normalized)
+                            # Format album data consistently
+                            unique_albums.append({
+                                'id': album.get('id'),
+                                'name': name,
+                                'cover_art_thumbnail_url': album.get('cover_art_thumbnail_url', ''),
+                                'cover_art_url': album.get('cover_art_url', ''),
+                                'release_date_for_display': album.get('release_date_for_display'),
+                                'artist': album.get('artist', {})
+                            })
 
-            all_songs.extend(songs)
-            page += 1
+                if unique_albums:
+                    logger.info(f"Found {len(unique_albums)} albums for {artist_name}")
+                    return unique_albums
 
-            # Check if there's a next page
-            next_page = songs_data.get('next_page')
-            if not next_page:
-                break
+        # Method 2: Fall back to getting full artist info
+        logger.info(f"Trying to get artist info for ID: {artist_id}")
+        artist_info = genius.artist(artist_id)
+        if artist_info:
+            logger.info(f"Artist info keys: {list(artist_info.get('artist', {}).keys()) if artist_info.get('artist') else 'None'}")
 
-        logger.info(f"Fetched {len(all_songs)} songs total")
-
-        # Debug: log first song structure
-        if all_songs:
-            first_song = all_songs[0]
-            logger.info(f"Sample song keys: {list(first_song.keys())}")
-            logger.info(f"Sample song album field: {first_song.get('album')}")
-
-        # Extract unique albums from songs
-        unique_albums = []
-        seen = set()
-        albums_with_no_id = 0
-        for song in all_songs:
-            album = song.get('album')
-            if album:
-                if album.get('id'):
-                    name = album.get('name', '')
-                    normalized = _normalize_album_name(name)
-                    if normalized and normalized not in seen:
-                        seen.add(normalized)
-                        unique_albums.append(album)
-                else:
-                    albums_with_no_id += 1
-
-        logger.info(f"Found {len(unique_albums)} unique albums, {albums_with_no_id} songs had album without ID")
-        return unique_albums
+        return []
 
     except Exception as e:
         logger.error(f"Error fetching albums via lyricsgenius: {e}")
@@ -419,8 +411,8 @@ def search_artist_albums(artist_name):
         if not artist_id:
             return None
 
-        # Get albums using PublicAPI
-        albums = _get_unique_albums(public_api, artist_id)
+        # Get albums using authenticated API
+        albums = _get_unique_albums(public_api, artist_id, artist_name=found_name or artist_name)
 
         # Format albums for frontend
         formatted_albums = []
