@@ -1,172 +1,178 @@
-{% extends "base.html" %}
-
-{% block title %}Analysis Results{% endblock %}
-
-{% block content %}
+{% extends "base.html" %} {% block title %}Analysis Results{% endblock %} {%
+block content %}
 <div class="results-header">
-    <a href="/" class="back-link">&larr; Analyze Another Album</a>
-    <h1 id="artist-name">Loading...</h1>
-    <p id="album-name" class="album-subtitle"></p>
+  <a href="/" class="back-link">&larr; Analyze Another Album</a>
+  <h1 id="artist-name">Loading...</h1>
+  <p id="album-name" class="album-subtitle"></p>
 </div>
 
 <div id="status-section" class="status-section">
-    <div class="status-indicator">
-        <span class="spinner"></span>
-        <span id="status-text">Starting analysis...</span>
-    </div>
+  <div class="status-indicator">
+    <span class="spinner"></span>
+    <span id="status-text">Starting analysis...</span>
+  </div>
 
-    <!-- Progress Bar -->
-    <div class="progress-bar-container">
-        <div class="progress-bar">
-            <div id="progress-fill" class="progress-fill"></div>
-        </div>
-        <span id="progress-percent" class="progress-percent">0%</span>
+  <!-- Progress Bar -->
+  <div class="progress-bar-container">
+    <div class="progress-bar">
+      <div id="progress-fill" class="progress-fill"></div>
     </div>
+    <span id="progress-percent" class="progress-percent">0%</span>
+  </div>
 
-    <!-- Step Timeline -->
-    <div class="step-timeline">
-        <div class="step" data-step="1">
-            <div class="step-icon-wrapper">
-                <span class="step-icon">○</span>
-            </div>
-            <span class="step-label">Scraping Lyrics</span>
-        </div>
-        <div class="step-connector"></div>
-        <div class="step" data-step="2">
-            <div class="step-icon-wrapper">
-                <span class="step-icon">○</span>
-            </div>
-            <span class="step-label">Preprocessing</span>
-        </div>
-        <div class="step-connector"></div>
-        <div class="step" data-step="3">
-            <div class="step-icon-wrapper">
-                <span class="step-icon">○</span>
-            </div>
-            <span class="step-label">Topic Analysis</span>
-        </div>
-        <div class="step-connector"></div>
-        <div class="step" data-step="4">
-            <div class="step-icon-wrapper">
-                <span class="step-icon">○</span>
-            </div>
-            <span class="step-label">Sentiment</span>
-        </div>
-        <div class="step-connector"></div>
-        <div class="step" data-step="5">
-            <div class="step-icon-wrapper">
-                <span class="step-icon">○</span>
-            </div>
-            <span class="step-label">Bonus Analysis</span>
-        </div>
-        <div class="step-connector"></div>
-        <div class="step" data-step="6">
-            <div class="step-icon-wrapper">
-                <span class="step-icon">○</span>
-            </div>
-            <span class="step-label">Saving Results</span>
-        </div>
+  <!-- Step Timeline -->
+  <div class="step-timeline">
+    <div class="step" data-step="1">
+      <div class="step-icon-wrapper">
+        <span class="step-icon">○</span>
+      </div>
+      <span class="step-label">Fetching Lyrics</span>
     </div>
+    <div class="step-connector"></div>
+    <div class="step" data-step="2">
+      <div class="step-icon-wrapper">
+        <span class="step-icon">○</span>
+      </div>
+      <span class="step-label">Preprocessing</span>
+    </div>
+    <div class="step-connector"></div>
+    <div class="step" data-step="3">
+      <div class="step-icon-wrapper">
+        <span class="step-icon">○</span>
+      </div>
+      <span class="step-label">Topic Analysis</span>
+    </div>
+    <div class="step-connector"></div>
+    <div class="step" data-step="4">
+      <div class="step-icon-wrapper">
+        <span class="step-icon">○</span>
+      </div>
+      <span class="step-label">Sentiment</span>
+    </div>
+    <div class="step-connector"></div>
+    <div class="step" data-step="5">
+      <div class="step-icon-wrapper">
+        <span class="step-icon">○</span>
+      </div>
+      <span class="step-label">Bonus Analysis</span>
+    </div>
+    <div class="step-connector"></div>
+    <div class="step" data-step="6">
+      <div class="step-icon-wrapper">
+        <span class="step-icon">○</span>
+      </div>
+      <span class="step-label">Saving Results</span>
+    </div>
+  </div>
 
-    <!-- Fun Facts -->
-    <div class="fun-fact-container">
-        <span class="fun-fact-label">Did you know?</span>
-        <p id="fun-fact" class="fun-fact"></p>
-    </div>
+  <!-- Fun Facts -->
+  <div class="fun-fact-container">
+    <span class="fun-fact-label">Did you know?</span>
+    <p id="fun-fact" class="fun-fact"></p>
+  </div>
 </div>
 
 <div id="results-section" class="results-section hidden">
-    <!-- Sentiment Section -->
-    <section class="result-card">
-        <h2>Sentiment Analysis</h2>
-        <p class="section-description">Emotional tone of each song, scored from negative to positive using natural language processing.</p>
-        <div class="sentiment-overview">
-            <div class="sentiment-score">
-                <span class="label">Overall Sentiment</span>
-                <span id="overall-sentiment" class="score">0</span>
-            </div>
+  <!-- Sentiment Section -->
+  <section class="result-card">
+    <h2>Sentiment Analysis</h2>
+    <p class="section-description">
+      Emotional tone of each song, scored from negative to positive using
+      natural language processing.
+    </p>
+    <div class="sentiment-overview">
+      <div class="sentiment-score">
+        <span class="label">Overall Sentiment</span>
+        <span id="overall-sentiment" class="score">0</span>
+      </div>
+    </div>
+    <div class="sentiment-charts">
+      <div class="chart-container full-width">
+        <div class="chart-header">
+          <h3 id="chart-title">Track Order</h3>
+          <div class="sort-toggle">
+            <button id="sort-track" class="sort-btn active">Track Order</button>
+            <button id="sort-sentiment" class="sort-btn">By Sentiment</button>
+          </div>
         </div>
-        <div class="sentiment-charts">
-            <div class="chart-container full-width">
-                <div class="chart-header">
-                    <h3 id="chart-title">Track Order</h3>
-                    <div class="sort-toggle">
-                        <button id="sort-track" class="sort-btn active">Track Order</button>
-                        <button id="sort-sentiment" class="sort-btn">By Sentiment</button>
-                    </div>
-                </div>
-                <div id="song-chart" class="bar-chart"></div>
-            </div>
-        </div>
-    </section>
+        <div id="song-chart" class="bar-chart"></div>
+      </div>
+    </div>
+  </section>
 
-    <!-- Word Frequency Section -->
-    <section class="result-card">
-        <h2>Top Words</h2>
-        <p class="section-description">Most frequently used words across all lyrics, excluding common stopwords.</p>
-        <div id="word-frequency" class="word-frequency"></div>
-    </section>
+  <!-- Word Frequency Section -->
+  <section class="result-card">
+    <h2>Top Words</h2>
+    <p class="section-description">
+      Most frequently used words across all lyrics, excluding common stopwords.
+    </p>
+    <div id="word-frequency" class="word-frequency"></div>
+  </section>
 
-    <!-- Metaphors Section -->
-    <section class="result-card">
-        <h2>Recurring Themes</h2>
-        <p class="section-description">Predefined thematic categories and how often their associated keywords appear.</p>
-        <div id="metaphors" class="metaphors-list"></div>
-    </section>
+  <!-- Metaphors Section -->
+  <section class="result-card">
+    <h2>Recurring Themes</h2>
+    <p class="section-description">
+      Predefined thematic categories and how often their associated keywords
+      appear.
+    </p>
+    <div id="metaphors" class="metaphors-list"></div>
+  </section>
 
-    <!-- Topics Section -->
-    <section class="result-card">
-        <h2>Discovered Themes</h2>
-        <p class="section-description">AI-discovered word clusters using topic modeling (LDA). These are statistical patterns, not semantic meanings—groupings may seem unexpected.</p>
-        <div id="topics-container" class="topics-container"></div>
-    </section>
+  <!-- Topics Section -->
+  <section class="result-card">
+    <h2>Discovered Themes</h2>
+    <p class="section-description">
+      AI-discovered word clusters using topic modeling (LDA). These are
+      statistical patterns, not semantic meanings—groupings may seem unexpected.
+    </p>
+    <div id="topics-container" class="topics-container"></div>
+  </section>
 
-    <!-- Stats Section -->
-    <section class="result-card stats-card">
-        <h2>Analysis Stats</h2>
-        <p class="section-description">Summary metrics from the analysis.</p>
-        <div class="stats-grid">
-            <div class="stat">
-                <span class="stat-value" id="songs-count">0</span>
-                <span class="stat-label">Songs Analyzed</span>
-            </div>
-            <div class="stat">
-                <span class="stat-value" id="total-words">0</span>
-                <span class="stat-label">Total Words</span>
-            </div>
-            <div class="stat">
-                <span class="stat-value" id="unique-words">0</span>
-                <span class="stat-label">Unique Vocabulary</span>
-            </div>
-            <div class="stat">
-                <span class="stat-value" id="vocab-richness">0%</span>
-                <span class="stat-label">Vocabulary Richness</span>
-            </div>
-        </div>
-        <div class="stats-highlights">
-            <div class="stat-highlight positive" id="most-positive-stat">
-                <span class="highlight-label">Most Positive</span>
-                <span class="highlight-value" id="most-positive-song">-</span>
-            </div>
-            <div class="stat-highlight negative" id="most-negative-stat">
-                <span class="highlight-label">Most Negative</span>
-                <span class="highlight-value" id="most-negative-song">-</span>
-            </div>
-        </div>
-    </section>
+  <!-- Stats Section -->
+  <section class="result-card stats-card">
+    <h2>Analysis Stats</h2>
+    <p class="section-description">Summary metrics from the analysis.</p>
+    <div class="stats-grid">
+      <div class="stat">
+        <span class="stat-value" id="songs-count">0</span>
+        <span class="stat-label">Songs Analyzed</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value" id="total-words">0</span>
+        <span class="stat-label">Total Words</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value" id="unique-words">0</span>
+        <span class="stat-label">Unique Vocabulary</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value" id="vocab-richness">0%</span>
+        <span class="stat-label">Vocabulary Richness</span>
+      </div>
+    </div>
+    <div class="stats-highlights">
+      <div class="stat-highlight positive" id="most-positive-stat">
+        <span class="highlight-label">Most Positive</span>
+        <span class="highlight-value" id="most-positive-song">-</span>
+      </div>
+      <div class="stat-highlight negative" id="most-negative-stat">
+        <span class="highlight-label">Most Negative</span>
+        <span class="highlight-value" id="most-negative-song">-</span>
+      </div>
+    </div>
+  </section>
 </div>
 
 <div id="error-section" class="error-section hidden">
-    <div class="error-icon">!</div>
-    <h2>Analysis Failed</h2>
-    <p id="error-message"></p>
-    <a href="/" class="btn">Try Again</a>
+  <div class="error-icon">!</div>
+  <h2>Analysis Failed</h2>
+  <p id="error-message"></p>
+  <a href="/" class="btn">Try Again</a>
 </div>
-{% endblock %}
-
-{% block scripts %}
+{% endblock %} {% block scripts %}
 <script>
-    const JOB_ID = "{{ job_id }}";
+  const JOB_ID = "{{ job_id }}";
 </script>
 <script src="{{ url_for('static', filename='results.js') }}"></script>
 {% endblock %}
