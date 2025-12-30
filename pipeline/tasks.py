@@ -208,11 +208,14 @@ def analyze_album_async(self, album_id: int, album_name: str, analysis_id: int, 
                 analysis.update_status('processing', progress_msg)
 
             # Use Discogs for tracks, multiple sources for lyrics
-            songs_data = scrape_album(album_id, album_name, artist_name, progress_callback=scraping_progress)
+            scrape_result = scrape_album(album_id, album_name, artist_name, progress_callback=scraping_progress)
 
-            if not songs_data:
+            if not scrape_result or not scrape_result.get('songs'):
                 analysis.mark_failed(f"No songs found for album: {album_name}")
                 return {'error': 'No songs found'}
+
+            songs_data = scrape_result['songs']
+            total_tracks = scrape_result.get('total_tracks', len(songs_data))
 
             # Stage 2: Preprocessing
             logger.info(f"========== STAGE 2/6: PREPROCESSING ==========")
@@ -293,6 +296,7 @@ def analyze_album_async(self, album_id: int, album_name: str, analysis_id: int, 
                 'artist': artist_name,
                 'album': album_name,
                 'songs_count': len(processed_songs),
+                'total_tracks': total_tracks,
                 'topics': topics,
                 'sentiment': {
                     'by_song': songs_sentiment,

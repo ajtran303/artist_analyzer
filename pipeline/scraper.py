@@ -690,8 +690,12 @@ def scrape_album(album_id, album_name=None, artist_name=None, progress_callback=
             # Rate limiting
             time.sleep(0.3)
 
-        logger.info(f"=== SCRAPING COMPLETE: {len(results)}/{len(tracks)} songs with lyrics ===")
-        return results
+        logger.info(f"=== SCRAPING COMPLETE: {len(results)}/{total_tracks} songs with lyrics ===")
+        return {
+            'songs': results,
+            'total_tracks': total_tracks,
+            'tracks_with_lyrics': len(results)
+        }
 
     except DiscogsError as e:
         logger.error(f"Discogs API error: {e}")

@@ -811,6 +811,14 @@ body {
   }
 }
 
+.lyrics-note {
+  margin-top: 1.5rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  text-align: center;
+  font-style: italic;
+}
+
 /* ===========================================
    LOADING SECTION - Album Loading State
    =========================================== */

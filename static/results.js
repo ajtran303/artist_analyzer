@@ -181,8 +181,15 @@ document.addEventListener("DOMContentLoaded", function () {
     renderMetaphors(results.metaphors || []);
 
     // Update stats
-    document.getElementById("songs-count").textContent =
-      results.songs_count || 0;
+    const songsCount = results.songs_count || 0;
+    const totalTracks = results.total_tracks || songsCount;
+
+    if (totalTracks > songsCount) {
+      document.getElementById("songs-count").textContent = `${songsCount} of ${totalTracks}`;
+      document.getElementById("songs-label").textContent = "Tracks Analyzed";
+    } else {
+      document.getElementById("songs-count").textContent = songsCount;
+    }
 
     const stats = results.stats || {};
     document.getElementById("total-words").textContent = (
