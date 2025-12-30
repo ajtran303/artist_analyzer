@@ -220,6 +220,16 @@ document.addEventListener("DOMContentLoaded", function () {
     const container = document.getElementById("topics-container");
     container.innerHTML = "";
 
+    if (!topics || topics.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">~</div>
+          <p class="empty-state-message">No topic patterns detected</p>
+          <p class="empty-state-hint">This can happen with very short or highly varied lyrics</p>
+        </div>`;
+      return;
+    }
+
     topics.forEach((topic, index) => {
       const keywords = Object.entries(topic.keywords || {})
         .slice(0, 6)
@@ -295,7 +305,12 @@ document.addEventListener("DOMContentLoaded", function () {
     container.innerHTML = "";
 
     if (data.length === 0) {
-      container.innerHTML = '<p class="text-muted">No data available</p>';
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">♪</div>
+          <p class="empty-state-message">No lyrics found for this album</p>
+          <p class="empty-state-hint">The tracks may be instrumental or lyrics aren't available</p>
+        </div>`;
       return;
     }
 
@@ -332,6 +347,16 @@ document.addEventListener("DOMContentLoaded", function () {
     const container = document.getElementById("word-frequency");
     container.innerHTML = "";
 
+    if (!words || words.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">...</div>
+          <p class="empty-state-message">No word data available</p>
+          <p class="empty-state-hint">Not enough lyrical content to analyze</p>
+        </div>`;
+      return;
+    }
+
     words.slice(0, 15).forEach((item) => {
       const html = `
                 <div class="word-item">
@@ -346,6 +371,16 @@ document.addEventListener("DOMContentLoaded", function () {
   function renderMetaphors(metaphors) {
     const container = document.getElementById("metaphors");
     container.innerHTML = "";
+
+    if (!metaphors || metaphors.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">*</div>
+          <p class="empty-state-message">No recurring themes detected</p>
+          <p class="empty-state-hint">The lyrics may not contain common thematic keywords</p>
+        </div>`;
+      return;
+    }
 
     metaphors.forEach((item) => {
       const html = `
