@@ -25,9 +25,13 @@ services:
     envVars:
       - key: FLASK_ENV
         value: production
+      - key: PYTHONPATH
+        value: /app
       - key: SECRET_KEY
         generateValue: true
       - key: GENIUS_API_TOKEN
+        sync: false # Set manually in Render dashboard
+      - key: DISCOGS_API_TOKEN
         sync: false # Set manually in Render dashboard
       - key: DATABASE_URL
         fromDatabase:
@@ -59,9 +63,13 @@ services:
     envVars:
       - key: FLASK_ENV
         value: production
+      - key: PYTHONPATH
+        value: /app
       - key: SECRET_KEY
         generateValue: true
       - key: GENIUS_API_TOKEN
+        sync: false # Set manually in Render dashboard
+      - key: DISCOGS_API_TOKEN
         sync: false # Set manually in Render dashboard
       - key: DATABASE_URL
         fromDatabase:
