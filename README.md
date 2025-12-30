@@ -8,6 +8,7 @@ A web application that analyzes song lyrics to discover hidden themes, track sen
 - **Sentiment Analysis**: Tracks emotional tone across songs using TextBlob
 - **Word Frequency**: Identifies most common words and vocabulary richness
 - **Metaphor Detection**: Finds recurring metaphorical themes (love, darkness, nature, etc.)
+- **Album Comparison**: Compare two albums side-by-side with sentiment, vocabulary, and shared theme analysis
 - **Winamp-inspired UI**: Retro aesthetic with modern responsive design
 
 ## Tech Stack
@@ -134,7 +135,8 @@ artist-analyzer/
 ├── static/
 │   ├── style.css          # Winamp-inspired styles
 │   ├── script.js          # Home page JavaScript
-│   └── results.js         # Results page JavaScript
+│   ├── results.js         # Results page JavaScript
+│   └── compare.js         # Comparison page JavaScript
 ├── tests/                 # Test suite
 ├── docker-compose.yml
 ├── Dockerfile
@@ -150,6 +152,7 @@ artist-analyzer/
 | POST | `/api/analyze` | Submit album for analysis |
 | GET | `/api/analyze/<job_id>` | Check analysis status |
 | GET | `/api/results/<job_id>` | Get analysis results |
+| GET | `/api/compare?a=<job_id>&b=<job_id>` | Compare two albums |
 | GET | `/api/health` | Health check |
 
 ## Development
