@@ -263,19 +263,29 @@ def _get_unique_albums(public_api, artist_id):
 
         logger.info(f"Fetched {len(all_songs)} songs total")
 
+        # Debug: log first song structure
+        if all_songs:
+            first_song = all_songs[0]
+            logger.info(f"Sample song keys: {list(first_song.keys())}")
+            logger.info(f"Sample song album field: {first_song.get('album')}")
+
         # Extract unique albums from songs
         unique_albums = []
         seen = set()
+        albums_with_no_id = 0
         for song in all_songs:
             album = song.get('album')
-            if album and album.get('id'):
-                name = album.get('name', '')
-                normalized = _normalize_album_name(name)
-                if normalized and normalized not in seen:
-                    seen.add(normalized)
-                    unique_albums.append(album)
+            if album:
+                if album.get('id'):
+                    name = album.get('name', '')
+                    normalized = _normalize_album_name(name)
+                    if normalized and normalized not in seen:
+                        seen.add(normalized)
+                        unique_albums.append(album)
+                else:
+                    albums_with_no_id += 1
 
-        logger.info(f"Found {len(unique_albums)} unique albums")
+        logger.info(f"Found {len(unique_albums)} unique albums, {albums_with_no_id} songs had album without ID")
         return unique_albums
 
     except Exception as e:
