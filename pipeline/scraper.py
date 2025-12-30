@@ -45,7 +45,7 @@ def _search_artist_public(artist_name):
     try:
         # Use Genius search API with browser headers
         response = requests.get(
-            'https://genius.com/api/search/multi',
+            'https://genius.com/api/search/artist',
             params={'q': artist_name},
             headers=headers,
             timeout=30
