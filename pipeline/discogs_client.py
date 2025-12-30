@@ -2,11 +2,32 @@
 
 import os
 import logging
+import re
 import time
 import requests
 import discogs_client
 
 logger = logging.getLogger(__name__)
+
+
+def clean_artist_name(name):
+    """
+    Remove Discogs disambiguation numbers from artist names.
+
+    Discogs adds numbers in parentheses to distinguish artists with the same name,
+    e.g., "Will Wood (7)" or "The National (2)".
+
+    Args:
+        name: Artist name possibly containing disambiguation number
+
+    Returns:
+        Cleaned artist name without disambiguation number
+    """
+    if not name:
+        return name
+    # Match " (number)" at the end of the string
+    cleaned = re.sub(r'\s*\(\d+\)\s*$', '', name)
+    return cleaned.strip()
 
 DISCOGS_TOKEN = os.environ.get('DISCOGS_API_TOKEN', '')
 
@@ -42,8 +63,10 @@ def search_artist(artist_name):
 
         if results and len(results) > 0:
             artist = results[0]
-            logger.info(f"Found artist on Discogs: {artist.name} (ID: {artist.id})")
-            return artist.id, artist.name
+            # Clean disambiguation number from artist name
+            cleaned_name = clean_artist_name(artist.name)
+            logger.info(f"Found artist on Discogs: {artist.name} -> {cleaned_name} (ID: {artist.id})")
+            return artist.id, cleaned_name
 
         logger.warning(f"Artist not found on Discogs: {artist_name}")
         return None, None
@@ -207,7 +230,7 @@ def get_release_info(release_id, is_master=True):
             return {
                 'title': master.title,
                 'year': master.year if hasattr(master, 'year') else None,
-                'artist': artist_name,
+                'artist': clean_artist_name(artist_name),
                 'genres': master.genres if hasattr(master, 'genres') else [],
                 'cover_art_url': master.images[0]['uri'] if hasattr(master, 'images') and master.images else ''
             }
@@ -219,7 +242,7 @@ def get_release_info(release_id, is_master=True):
             return {
                 'title': release.title,
                 'year': release.year if hasattr(release, 'year') else None,
-                'artist': artist_name,
+                'artist': clean_artist_name(artist_name),
                 'genres': release.genres if hasattr(release, 'genres') else [],
                 'cover_art_url': release.images[0]['uri'] if hasattr(release, 'images') and release.images else ''
             }

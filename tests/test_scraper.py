@@ -10,6 +10,7 @@ from pipeline.scraper import (
     _extract_year_from_date,
     ScraperError
 )
+from pipeline.discogs_client import clean_artist_name
 
 
 @pytest.mark.unit
@@ -176,3 +177,40 @@ class TestErrorHandling:
 
         result = search_artist_albums('Test Artist')
         assert result is None
+
+
+@pytest.mark.unit
+class TestCleanArtistName:
+    """Tests for clean_artist_name function."""
+
+    def test_removes_disambiguation_number(self):
+        """Removes Discogs disambiguation numbers."""
+        assert clean_artist_name('Will Wood (7)') == 'Will Wood'
+        assert clean_artist_name('The National (2)') == 'The National'
+        assert clean_artist_name('James (3)') == 'James'
+
+    def test_handles_large_numbers(self):
+        """Handles large disambiguation numbers."""
+        assert clean_artist_name('John Smith (123)') == 'John Smith'
+        assert clean_artist_name('Artist (9999)') == 'Artist'
+
+    def test_preserves_non_disambiguation_parentheses(self):
+        """Preserves parentheses that are not disambiguation numbers."""
+        assert clean_artist_name('Panic! At The Disco') == 'Panic! At The Disco'
+        assert clean_artist_name('(Sandy) Alex G') == '(Sandy) Alex G'
+        assert clean_artist_name('fun.') == 'fun.'
+
+    def test_handles_no_parentheses(self):
+        """Handles names without parentheses."""
+        assert clean_artist_name('The Beatles') == 'The Beatles'
+        assert clean_artist_name('Taylor Swift') == 'Taylor Swift'
+
+    def test_handles_empty_and_none(self):
+        """Handles empty string and None."""
+        assert clean_artist_name('') == ''
+        assert clean_artist_name(None) is None
+
+    def test_handles_parentheses_with_text(self):
+        """Does not remove parentheses containing text."""
+        assert clean_artist_name('Artist (UK)') == 'Artist (UK)'
+        assert clean_artist_name('Band (featuring Guest)') == 'Band (featuring Guest)'
