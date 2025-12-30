@@ -198,11 +198,17 @@ def analyze_album_async(self, album_id: int, album_name: str, analysis_id: int, 
 
             # Stage 1: Scraping
             logger.info(f"========== STAGE 1/6: SCRAPING ==========")
-            self.update_state(state='PROGRESS', meta={'progress': 'Scraping lyrics from Genius...'})
-            analysis.update_status('processing', 'Scraping lyrics from Genius...')
+            self.update_state(state='PROGRESS', meta={'progress': 'Fetching lyrics...'})
+            analysis.update_status('processing', 'Fetching lyrics...')
 
-            # Use Discogs for tracks, Genius for lyrics
-            songs_data = scrape_album(album_id, album_name, artist_name)
+            # Progress callback to update status during scraping
+            def scraping_progress(current, total, title):
+                progress_msg = f'Fetching lyrics ({current}/{total}): {title}'
+                self.update_state(state='PROGRESS', meta={'progress': progress_msg})
+                analysis.update_status('processing', progress_msg)
+
+            # Use Discogs for tracks, multiple sources for lyrics
+            songs_data = scrape_album(album_id, album_name, artist_name, progress_callback=scraping_progress)
 
             if not songs_data:
                 analysis.mark_failed(f"No songs found for album: {album_name}")

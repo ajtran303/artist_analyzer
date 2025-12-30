@@ -609,7 +609,7 @@ def get_artist_albums_by_id(artist_id, artist_name, page=1, per_page=20):
         return None
 
 
-def scrape_album(album_id, album_name=None, artist_name=None):
+def scrape_album(album_id, album_name=None, artist_name=None, progress_callback=None):
     """
     Scrape lyrics for all songs in an album using Discogs + Genius hybrid approach.
 
@@ -617,6 +617,7 @@ def scrape_album(album_id, album_name=None, artist_name=None):
         album_id: Discogs master/release ID
         album_name: Album name (optional, for metadata)
         artist_name: Artist name (required for Genius search)
+        progress_callback: Optional callback(current, total, title) for progress updates
 
     Returns:
         List of dicts with: title, artist, album, year, lyrics, url
@@ -642,9 +643,14 @@ def scrape_album(album_id, album_name=None, artist_name=None):
             return []
 
         results = []
+        total_tracks = len(tracks)
         for i, track in enumerate(tracks, 1):
             title = track.get('title', 'Unknown')
-            logger.info(f"[{i}/{len(tracks)}] Fetching lyrics for: {artist_name} - {title}")
+            logger.info(f"[{i}/{total_tracks}] Fetching lyrics for: {artist_name} - {title}")
+
+            # Report progress if callback provided
+            if progress_callback:
+                progress_callback(i, total_tracks, title)
 
             lyrics = None
             source_url = None
