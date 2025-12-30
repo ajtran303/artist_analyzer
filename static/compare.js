@@ -93,6 +93,18 @@ document.addEventListener("DOMContentLoaded", async function () {
     renderDiscoveredTopics(sharedTopics);
   }
 
+  function getSentimentLabel(score) {
+    if (score >= 0.5) return "Extremely Positive";
+    if (score >= 0.3) return "Very Positive";
+    if (score >= 0.15) return "Positive";
+    if (score >= 0.05) return "Slightly Positive";
+    if (score > -0.05) return "Neutral";
+    if (score > -0.15) return "Slightly Negative";
+    if (score > -0.3) return "Negative";
+    if (score > -0.5) return "Very Negative";
+    return "Extremely Negative";
+  }
+
   function renderSentiment(resultsA, resultsB) {
     const sentimentA = resultsA.sentiment?.overall || 0;
     const sentimentB = resultsB.sentiment?.overall || 0;
@@ -103,6 +115,12 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     scoreAEl.textContent = formatScore(sentimentA);
     scoreBEl.textContent = formatScore(sentimentB);
+
+    // Add sentiment labels
+    const labelAEl = document.getElementById("sentiment-label-a");
+    const labelBEl = document.getElementById("sentiment-label-b");
+    if (labelAEl) labelAEl.textContent = getSentimentLabel(sentimentA);
+    if (labelBEl) labelBEl.textContent = getSentimentLabel(sentimentB);
 
     // Add color classes based on sentiment
     scoreAEl.classList.add(getSentimentClass(sentimentA));

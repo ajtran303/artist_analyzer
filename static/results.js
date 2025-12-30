@@ -265,11 +265,29 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
+  function getSentimentLabel(score) {
+    if (score >= 0.5) return "Extremely Positive";
+    if (score >= 0.3) return "Very Positive";
+    if (score >= 0.15) return "Positive";
+    if (score >= 0.05) return "Slightly Positive";
+    if (score > -0.05) return "Neutral";
+    if (score > -0.15) return "Slightly Negative";
+    if (score > -0.3) return "Negative";
+    if (score > -0.5) return "Very Negative";
+    return "Extremely Negative";
+  }
+
   function renderSentiment(sentiment) {
     const overall = sentiment.overall || 0;
     const overallEl = document.getElementById("overall-sentiment");
     overallEl.textContent =
       overall >= 0 ? `+${overall.toFixed(2)}` : overall.toFixed(2);
+
+    // Add sentiment label
+    const labelEl = document.getElementById("sentiment-label");
+    if (labelEl) {
+      labelEl.textContent = getSentimentLabel(overall);
+    }
 
     if (overall > 0.1) {
       overallEl.className = "score positive";

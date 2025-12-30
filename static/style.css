@@ -1251,6 +1251,13 @@ body {
   color: var(--neutral-color);
 }
 
+.sentiment-label {
+  display: block;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+}
+
 .sentiment-charts {
   padding: 0 1rem 1rem;
 }
