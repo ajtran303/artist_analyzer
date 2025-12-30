@@ -84,4 +84,4 @@ databases:
   - name: artist-analyzer-db
     databaseName: artist_analyzer
     user: analyzer_user
-    plan: basic
+    plan: basic-256mb
