@@ -234,7 +234,7 @@ def submit_analysis():
         # Create new analysis
         analysis = Analysis.create(artist_name, album_id=album_id, album_name=album_name)
 
-        # Queue Celery task (pass artist_name for Genius search)
+        # Queue Celery task (pass artist_name for lyrics search)
         from pipeline.tasks import analyze_album_async
         logger.info(f"Sending task to Celery for analysis_id={analysis.id}")
         try:

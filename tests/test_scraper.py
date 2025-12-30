@@ -4,66 +4,12 @@ import pytest
 from unittest.mock import patch, MagicMock
 
 from pipeline.scraper import (
-    scrape_genius,
     search_artist_albums,
     scrape_album,
     _normalize_album_name,
     _extract_year_from_date,
-    _search_artist_public,
-    _scrape_lyrics_from_url,
     ScraperError
 )
-
-
-@pytest.mark.unit
-class TestScrapeGenius:
-    """Tests for scrape_genius function."""
-
-    @patch('pipeline.scraper._search_artist_public')
-    @patch('pipeline.scraper._get_artist_songs_public')
-    def test_returns_correct_structure(self, mock_get_songs, mock_search):
-        """scrape_genius() returns correct structure."""
-        mock_search.return_value = (123, 'Test Artist')
-
-        mock_get_songs.return_value = [
-            {'title': 'Song 1', 'artist': 'Artist', 'album': 'Album',
-             'year': 2020, 'url': 'http://url', 'lyrics': 'Test lyrics'}
-        ]
-
-        result = scrape_genius('Test Artist', albums_only=False)
-
-        assert len(result) == 1
-        assert result[0]['title'] == 'Song 1'
-        assert result[0]['lyrics'] == 'Test lyrics'
-        assert 'artist' in result[0]
-        assert 'album' in result[0]
-        assert 'year' in result[0]
-        assert 'url' in result[0]
-
-    @patch('pipeline.scraper._search_artist_public')
-    def test_handles_artist_not_found(self, mock_search):
-        """Returns empty list if artist not found."""
-        mock_search.return_value = (None, None)
-
-        result = scrape_genius('Nonexistent Artist')
-
-        assert result == []
-
-    @patch('pipeline.scraper._search_artist_public')
-    @patch('pipeline.scraper._get_artist_songs_public')
-    def test_handles_missing_data(self, mock_get_songs, mock_search):
-        """Handles missing album and year gracefully."""
-        mock_search.return_value = (123, 'Test Artist')
-
-        mock_get_songs.return_value = [
-            {'title': 'Song', 'artist': 'Artist', 'album': None,
-             'year': None, 'url': 'http://url', 'lyrics': 'Lyrics'}
-        ]
-
-        result = scrape_genius('Test Artist', albums_only=False)
-
-        assert result[0]['album'] is None
-        assert result[0]['year'] is None
 
 
 @pytest.mark.unit
@@ -142,6 +88,23 @@ class TestScrapeAlbum:
         result = scrape_album(12345, 'Test Album')
         assert result == []
 
+    @patch('pipeline.scraper.discogs_get_release_info')
+    @patch('pipeline.scraper.discogs_get_release_tracks')
+    @patch('pipeline.scraper._fetch_lyrics_musixmatch')
+    @patch('pipeline.scraper._fetch_lyrics_lyricsovh')
+    def test_falls_back_to_lyricsovh(self, mock_lyricsovh, mock_musixmatch, mock_tracks, mock_info):
+        """Falls back to lyrics.ovh when Musixmatch fails."""
+        mock_info.return_value = {'artist': 'Test Artist', 'year': 2020}
+        mock_tracks.return_value = [{'title': 'Track 1', 'position': '1'}]
+        mock_musixmatch.return_value = ''  # Musixmatch fails
+        mock_lyricsovh.return_value = 'Lyrics from lyrics.ovh'
+
+        result = scrape_album(12345, 'Test Album')
+
+        assert result['tracks_with_lyrics'] == 1
+        assert result['songs'][0]['lyrics'] == 'Lyrics from lyrics.ovh'
+        assert result['songs'][0]['url'] == 'lyrics.ovh'
+
 
 @pytest.mark.unit
 class TestNormalizeAlbumName:
@@ -206,100 +169,10 @@ class TestExtractYearFromDate:
 class TestErrorHandling:
     """Tests for error handling in scraper."""
 
-    @patch('pipeline.scraper._search_artist_public')
-    def test_exception_raises_scraper_error(self, mock_search):
-        """Exceptions are wrapped in ScraperError."""
+    @patch('pipeline.scraper.discogs_search_artist')
+    def test_returns_none_on_discogs_error(self, mock_search):
+        """Returns None when Discogs search fails."""
         mock_search.side_effect = Exception("API Error")
 
-        with pytest.raises(ScraperError):
-            scrape_genius('Test Artist')
-
-    @patch('pipeline.scraper._search_artist_public')
-    def test_invalid_artist_returns_empty(self, mock_search):
-        """Invalid artist returns empty list, not error."""
-        mock_search.return_value = (None, None)
-
-        result = scrape_genius('!@#$%^&*()')
-        assert result == []
-
-
-@pytest.mark.unit
-class TestScrapeLyricsFromUrl:
-    """Tests for web scraping lyrics."""
-
-    @patch('pipeline.scraper.requests.get')
-    def test_extracts_lyrics_from_page(self, mock_get):
-        """Extracts lyrics from page."""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.text = '''
-        <html><body>
-        <div data-lyrics-container="true">
-        First verse lyrics here
-        </div>
-        <div data-lyrics-container="true">
-        Chorus lyrics here
-        </div>
-        </body></html>
-        '''
-        mock_get.return_value = mock_response
-
-        result = _scrape_lyrics_from_url('https://genius.com/song')
-
-        assert 'First verse lyrics' in result
-        assert 'Chorus lyrics' in result
-
-    @patch('pipeline.scraper.requests.get')
-    def test_handles_404(self, mock_get):
-        """Returns empty string for 404."""
-        mock_response = MagicMock()
-        mock_response.status_code = 404
-        mock_get.return_value = mock_response
-
-        result = _scrape_lyrics_from_url('https://genius.com/missing')
-        assert result == ''
-
-    def test_handles_empty_url(self):
-        """Returns empty string for empty URL."""
-        result = _scrape_lyrics_from_url('')
-        assert result == ''
-
-
-@pytest.mark.unit
-class TestSearchArtistPublic:
-    """Tests for public API artist search."""
-
-    @patch('pipeline.scraper.requests.get')
-    def test_returns_artist_id_and_name(self, mock_get):
-        """Returns artist ID and name from search."""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            'response': {
-                'sections': [{
-                    'type': 'top_hit',
-                    'hits': [{
-                        'result': {'_type': 'artist', 'id': 123, 'name': 'Test Artist'}
-                    }]
-                }]
-            }
-        }
-        mock_get.return_value = mock_response
-
-        artist_id, name = _search_artist_public('Test Artist')
-
-        assert artist_id == 123
-        assert name == 'Test Artist'
-
-    @patch('pipeline.scraper.requests.get')
-    def test_returns_none_if_no_results(self, mock_get):
-        """Returns None if no search results."""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {'response': {'sections': []}}
-        mock_get.return_value = mock_response
-
-        artist_id, name = _search_artist_public('Unknown Artist')
-
-        assert artist_id is None
-        assert name is None
+        result = search_artist_albums('Test Artist')
+        assert result is None

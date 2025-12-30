@@ -14,7 +14,7 @@ class TestFullPipeline:
     """End-to-end pipeline tests with mocked API."""
 
     def test_full_pipeline_execution(self):
-        """Full pipeline executes with mocked Genius API."""
+        """Full pipeline executes with mocked lyrics data."""
         # Simulated scraped songs
         songs = [
             {

@@ -172,7 +172,7 @@ def create_song_batch(count=10, analysis_id=1, artist_name='Test Artist'):
             'album': f'Album {(i // 3) + 1}',
             'year': 2018 + (i % 5),
             'lyrics': create_sample_lyrics(theme),
-            'url': f'https://genius.com/song{i + 1}'
+            'url': 'musixmatch'
         })
 
     return songs

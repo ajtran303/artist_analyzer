@@ -46,7 +46,7 @@ class TestInputValidation:
 
     def test_sanitizes_html_in_artist_name(self, client, db_session):
         """Strips HTML tags from artist name."""
-        with patch('pipeline.tasks.analyze_artist_async') as mock_task:
+        with patch('pipeline.tasks.analyze_album_async') as mock_task:
             from unittest.mock import MagicMock
             mock_task.delay.return_value = MagicMock(id='test-job')
 
