@@ -232,9 +232,6 @@ document.addEventListener("DOMContentLoaded", function () {
                         <span class="topic-name">${
                           topic.name || `Topic ${index + 1}`
                         }</span>
-                        <span class="topic-weight">${(
-                          (topic.weight || 0) * 100
-                        ).toFixed(1)}%</span>
                     </div>
                     <div class="topic-keywords">${keywords}</div>
                 </div>

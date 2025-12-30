@@ -3,8 +3,8 @@ endblock %} {% block content %}
 <div class="hero">
   <h1>Artist Lyrical Analysis</h1>
   <p class="subtitle">
-    Discover hidden themes, track sentiment evolution, and reveal lyrical
-    patterns
+    Track sentiment evolution, reveal lyrical patterns, and discover hidden
+    themes
   </p>
 </div>
 
@@ -29,8 +29,7 @@ endblock %} {% block content %}
       </button>
     </div>
     <p class="language-notice">
-      English lyrics only — sentiment analysis and theme detection are optimized
-      for English.
+      Sentiment analysis and theme detection are optimized for English.
     </p>
   </form>
 
@@ -46,7 +45,10 @@ endblock %} {% block content %}
     </div>
     <div class="progress-bar-container">
       <div class="progress-bar">
-        <div id="album-progress-fill" class="progress-fill progress-indeterminate"></div>
+        <div
+          id="album-progress-fill"
+          class="progress-fill progress-indeterminate"
+        ></div>
       </div>
     </div>
     <p id="loading-status" class="loading-status">Searching for artist...</p>
@@ -68,16 +70,20 @@ endblock %} {% block content %}
 
 <div class="features">
   <div class="feature-card">
-    <h3>Topic Discovery</h3>
-    <p>Uses LDA to discover 5-8 hidden themes in the album's lyrics</p>
-  </div>
-  <div class="feature-card">
-    <h3>Sentiment Timeline</h3>
-    <p>Track emotional evolution across the album</p>
+    <h3>Sentiment Analysis</h3>
+    <p>Track emotional tone across every song on the album</p>
   </div>
   <div class="feature-card">
     <h3>Lyrical Patterns</h3>
-    <p>Identify recurring metaphors and word frequencies</p>
+    <p>Surface recurring metaphors and most-used words</p>
+  </div>
+  <div class="feature-card">
+    <h3>Topic Discovery</h3>
+    <p>AI-powered LDA reveals hidden thematic clusters</p>
+  </div>
+  <div class="feature-card">
+    <h3>Vocabulary Stats</h3>
+    <p>Measure lexical diversity and vocabulary richness</p>
   </div>
 </div>
 {% endblock %} {% block scripts %}
