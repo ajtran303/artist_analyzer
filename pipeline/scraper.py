@@ -11,6 +11,7 @@ from lyricsgenius import Genius, PublicAPI
 logger = logging.getLogger(__name__)
 
 GENIUS_TOKEN = os.environ.get('GENIUS_API_TOKEN', '')
+MUSIXMATCH_API_KEY = os.environ.get('MUSIXMATCH_API_KEY', '')
 
 # Import Discogs client functions
 from pipeline.discogs_client import (
@@ -278,6 +279,41 @@ def _get_album_tracks(public_api, album_id):
     except Exception as e:
         logger.error(f"Error fetching album tracks: {e}")
         return []
+
+
+def _fetch_lyrics_musixmatch(artist_name, song_title):
+    """Fetch lyrics from Musixmatch API."""
+    if not MUSIXMATCH_API_KEY:
+        return ''
+
+    try:
+        response = requests.get(
+            'https://api.musixmatch.com/ws/1.1/matcher.lyrics.get',
+            params={
+                'q_track': song_title,
+                'q_artist': artist_name,
+                'apikey': MUSIXMATCH_API_KEY,
+            },
+            timeout=15
+        )
+
+        if response.status_code == 200:
+            data = response.json()
+            message = data.get('message', {})
+            if message.get('header', {}).get('status_code') == 200:
+                body = message.get('body', {})
+                lyrics = body.get('lyrics', {}).get('lyrics_body', '')
+                if lyrics:
+                    # Musixmatch adds a disclaimer at the end, remove it
+                    if '******* This Lyrics is NOT for Commercial use *******' in lyrics:
+                        lyrics = lyrics.split('******* This Lyrics is NOT for Commercial use *******')[0].strip()
+                    logger.info(f"Got lyrics from Musixmatch for: {artist_name} - {song_title}")
+                    return lyrics
+
+        return ''
+    except Exception as e:
+        logger.debug(f"Musixmatch failed for {artist_name} - {song_title}: {e}")
+        return ''
 
 
 def _fetch_lyrics_lyricsovh(artist_name, song_title):
@@ -613,12 +649,20 @@ def scrape_album(album_id, album_name=None, artist_name=None):
             lyrics = None
             source_url = None
 
-            # Try lyrics.ovh first (free API, no scraping)
-            lyrics = _fetch_lyrics_lyricsovh(artist_name, title)
-            if lyrics:
-                source_url = f"https://lyrics.ovh/v1/{artist_name}/{title}"
-            else:
-                # Fall back to Genius search + scraping
+            # Try Musixmatch first (paid, best coverage)
+            if MUSIXMATCH_API_KEY:
+                lyrics = _fetch_lyrics_musixmatch(artist_name, title)
+                if lyrics:
+                    source_url = 'musixmatch'
+
+            # Try lyrics.ovh second (free API)
+            if not lyrics:
+                lyrics = _fetch_lyrics_lyricsovh(artist_name, title)
+                if lyrics:
+                    source_url = 'lyrics.ovh'
+
+            # Fall back to Genius search + scraping (often blocked from cloud)
+            if not lyrics:
                 genius_url = search_song_genius(artist_name, title)
                 if genius_url:
                     lyrics = _scrape_lyrics_from_url(genius_url, artist_name=artist_name, song_title=title)

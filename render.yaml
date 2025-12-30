@@ -33,6 +33,8 @@ services:
         sync: false # Set manually in Render dashboard
       - key: DISCOGS_API_TOKEN
         sync: false # Set manually in Render dashboard
+      - key: MUSIXMATCH_API_KEY
+        sync: false # Set manually in Render dashboard
       - key: DATABASE_URL
         fromDatabase:
           name: artist-analyzer-db
@@ -70,6 +72,8 @@ services:
       - key: GENIUS_API_TOKEN
         sync: false # Set manually in Render dashboard
       - key: DISCOGS_API_TOKEN
+        sync: false # Set manually in Render dashboard
+      - key: MUSIXMATCH_API_KEY
         sync: false # Set manually in Render dashboard
       - key: DATABASE_URL
         fromDatabase:
