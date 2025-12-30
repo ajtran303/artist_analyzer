@@ -70,18 +70,21 @@ class TestScrapeGenius:
 class TestSearchArtistAlbums:
     """Tests for search_artist_albums function."""
 
-    @patch('pipeline.scraper._search_artist_public')
-    @patch('pipeline.scraper._get_unique_albums')
+    @patch('pipeline.scraper.discogs_search_artist')
+    @patch('pipeline.scraper.discogs_get_artist_albums')
     def test_returns_correct_structure(self, mock_albums, mock_search):
         """Returns correct structure with artist and albums."""
         mock_search.return_value = (456, 'Test Artist')
 
-        mock_albums.return_value = [
-            {'id': 1, 'name': 'Album 1', 'cover_art_thumbnail_url': 'http://img1.jpg',
-             'release_date_for_display': 'January 1, 2020', 'artist': {'name': 'Test Artist'}},
-            {'id': 2, 'name': 'Album 2', 'cover_art_thumbnail_url': 'http://img2.jpg',
-             'release_date_for_display': 'June 15, 2021', 'artist': {'name': 'Test Artist'}}
-        ]
+        mock_albums.return_value = {
+            'albums': [
+                {'id': 1, 'name': 'Album 1', 'year': 2020},
+                {'id': 2, 'name': 'Album 2', 'year': 2021}
+            ],
+            'has_more': False,
+            'next_page': 2,
+            'page': 1
+        }
 
         result = search_artist_albums('Test Artist')
 
@@ -92,7 +95,7 @@ class TestSearchArtistAlbums:
         assert result['albums'][0]['name'] == 'Album 1'
         assert result['albums'][0]['year'] == 2020
 
-    @patch('pipeline.scraper._search_artist_public')
+    @patch('pipeline.scraper.discogs_search_artist')
     def test_returns_none_if_artist_not_found(self, mock_search):
         """Returns None if artist not found."""
         mock_search.return_value = (None, None)
@@ -106,18 +109,18 @@ class TestSearchArtistAlbums:
 class TestScrapeAlbum:
     """Tests for scrape_album function."""
 
-    @patch('pipeline.scraper._get_album_tracks')
+    @patch('pipeline.scraper.discogs_get_release_info')
+    @patch('pipeline.scraper.discogs_get_release_tracks')
+    @patch('pipeline.scraper.search_song_genius')
     @patch('pipeline.scraper._scrape_lyrics_from_url')
-    def test_returns_songs_from_album(self, mock_lyrics, mock_tracks):
+    def test_returns_songs_from_album(self, mock_lyrics, mock_genius, mock_tracks, mock_info):
         """Returns song data for album tracks."""
+        mock_info.return_value = {'artist': 'Test Artist', 'year': 2020}
         mock_tracks.return_value = [
-            {'song': {'title': 'Track 1', 'url': 'http://song1',
-                     'primary_artist': {'name': 'Artist'},
-                     'release_date_for_display': '2020'}},
-            {'song': {'title': 'Track 2', 'url': 'http://song2',
-                     'primary_artist': {'name': 'Artist'},
-                     'release_date_for_display': '2020'}}
+            {'title': 'Track 1', 'position': '1'},
+            {'title': 'Track 2', 'position': '2'}
         ]
+        mock_genius.side_effect = ['http://genius.com/song1', 'http://genius.com/song2']
         mock_lyrics.side_effect = ['Lyrics 1', 'Lyrics 2']
 
         result = scrape_album(12345, 'Test Album')
@@ -126,10 +129,13 @@ class TestScrapeAlbum:
         assert result[0]['title'] == 'Track 1'
         assert result[0]['lyrics'] == 'Lyrics 1'
         assert result[0]['album'] == 'Test Album'
+        assert result[0]['artist'] == 'Test Artist'
 
-    @patch('pipeline.scraper._get_album_tracks')
-    def test_returns_empty_if_no_tracks(self, mock_tracks):
+    @patch('pipeline.scraper.discogs_get_release_info')
+    @patch('pipeline.scraper.discogs_get_release_tracks')
+    def test_returns_empty_if_no_tracks(self, mock_tracks, mock_info):
         """Returns empty list if no tracks found."""
+        mock_info.return_value = {'artist': 'Test Artist', 'year': 2020}
         mock_tracks.return_value = []
         result = scrape_album(12345, 'Test Album')
         assert result == []
