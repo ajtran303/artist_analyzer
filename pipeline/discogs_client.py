@@ -196,19 +196,30 @@ def get_release_info(release_id, is_master=True):
 
         if is_master:
             master = d.master(release_id)
+            # Get artist from main_release since master might not have artists directly
+            artist_name = ''
+            if hasattr(master, 'artists') and master.artists:
+                artist_name = master.artists[0].name
+            elif hasattr(master, 'main_release'):
+                main_release = master.main_release
+                if hasattr(main_release, 'artists') and main_release.artists:
+                    artist_name = main_release.artists[0].name
             return {
                 'title': master.title,
                 'year': master.year if hasattr(master, 'year') else None,
-                'artist': master.artists[0].name if master.artists else '',
+                'artist': artist_name,
                 'genres': master.genres if hasattr(master, 'genres') else [],
                 'cover_art_url': master.images[0]['uri'] if hasattr(master, 'images') and master.images else ''
             }
         else:
             release = d.release(release_id)
+            artist_name = ''
+            if hasattr(release, 'artists') and release.artists:
+                artist_name = release.artists[0].name
             return {
                 'title': release.title,
                 'year': release.year if hasattr(release, 'year') else None,
-                'artist': release.artists[0].name if release.artists else '',
+                'artist': artist_name,
                 'genres': release.genres if hasattr(release, 'genres') else [],
                 'cover_art_url': release.images[0]['uri'] if hasattr(release, 'images') and release.images else ''
             }

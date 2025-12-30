@@ -196,7 +196,15 @@ def submit_analysis():
                     'cached': True
                 }), 200
 
+            # Check if stuck (queued/processing for more than 10 minutes)
+            from datetime import datetime, timedelta
+            is_stuck = False
             if existing.status in ('queued', 'processing'):
+                if existing.created_at:
+                    age = datetime.utcnow() - existing.created_at
+                    is_stuck = age > timedelta(minutes=10)
+
+            if existing.status in ('queued', 'processing') and not is_stuck:
                 return jsonify({
                     'job_id': existing.job_id,
                     'status': existing.status,
@@ -204,9 +212,10 @@ def submit_analysis():
                     'album': album_name
                 }), 202
 
-            # If failed, allow retry by creating new
-            if existing.status == 'failed':
+            # If failed or stuck, allow retry by deleting old record
+            if existing.status == 'failed' or is_stuck:
                 from database import db
+                logger.info(f"Deleting {'stuck' if is_stuck else 'failed'} analysis {existing.id}")
                 db.session.delete(existing)
                 db.session.commit()
 
