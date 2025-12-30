@@ -95,8 +95,8 @@ document.addEventListener("DOMContentLoaded", function () {
         showError(data.error || "Analysis failed");
       } else {
         // Still processing
-        statusText.textContent = getStatusMessage(data.status);
-        updateProgress(data.stage || 0, data.total_stages || 6);
+        statusText.textContent = data.progress || getStatusMessage(data.status);
+        updateProgress(data.stage || 0, data.total_stages || 6, data.sub_current, data.sub_total);
         updateSteps(data.stage || 0);
       }
     } catch (error) {
@@ -105,8 +105,17 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
-  function updateProgress(stage, totalStages) {
-    const percent = Math.round((stage / totalStages) * 100);
+  function updateProgress(stage, totalStages, subCurrent, subTotal) {
+    // Calculate base progress from completed stages
+    const stageProgress = (stage - 1) / totalStages;
+
+    // Add sub-progress within current stage if available
+    let subProgress = 0;
+    if (subCurrent && subTotal && subTotal > 0) {
+      subProgress = (subCurrent / subTotal) / totalStages;
+    }
+
+    const percent = Math.round(Math.max(0, (stageProgress + subProgress)) * 100);
     progressFill.style.width = `${percent}%`;
     progressPercent.textContent = `${percent}%`;
   }

@@ -18,6 +18,7 @@ MAX_ARTIST_NAME_LENGTH = 200
 # Stage mapping for progress tracking
 TOTAL_STAGES = 6
 STAGE_KEYWORDS = [
+    ('Fetching', 1),
     ('Scraping', 1),
     ('Preprocessing', 2),
     ('LDA', 3),
@@ -36,6 +37,17 @@ def get_stage_from_progress(progress):
         if keyword.lower() in progress_lower:
             return stage
     return 0
+
+
+def get_sub_progress(progress):
+    """Extract sub-progress from messages like 'Fetching lyrics (5/12): title'."""
+    if not progress:
+        return None, None
+    # Look for pattern like (5/12)
+    match = re.search(r'\((\d+)/(\d+)\)', progress)
+    if match:
+        return int(match.group(1)), int(match.group(2))
+    return None, None
 
 
 ARTIST_NAME_PATTERN = re.compile(r'^[\w\s\-\.\'\&]+$', re.UNICODE)
@@ -284,6 +296,11 @@ def get_analysis_status(job_id):
         if analysis.progress:
             response['progress'] = analysis.progress
             response['stage'] = get_stage_from_progress(analysis.progress)
+            # Include sub-progress for granular updates during fetching
+            sub_current, sub_total = get_sub_progress(analysis.progress)
+            if sub_current is not None:
+                response['sub_current'] = sub_current
+                response['sub_total'] = sub_total
         else:
             response['stage'] = 0
 
