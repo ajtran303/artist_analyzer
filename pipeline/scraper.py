@@ -280,7 +280,32 @@ def _get_album_tracks(public_api, album_id):
         return []
 
 
-def _scrape_lyrics_from_url(url, retries=3):
+def _fetch_lyrics_lyricsovh(artist_name, song_title):
+    """Fetch lyrics from lyrics.ovh API (free, no scraping needed)."""
+    try:
+        # Clean artist and title for URL
+        artist = artist_name.strip()
+        title = song_title.strip()
+
+        response = requests.get(
+            f'https://api.lyrics.ovh/v1/{artist}/{title}',
+            timeout=15
+        )
+
+        if response.status_code == 200:
+            data = response.json()
+            lyrics = data.get('lyrics', '')
+            if lyrics:
+                logger.info(f"Got lyrics from lyrics.ovh for: {artist} - {title}")
+                return lyrics.strip()
+
+        return ''
+    except Exception as e:
+        logger.debug(f"lyrics.ovh failed for {artist_name} - {song_title}: {e}")
+        return ''
+
+
+def _scrape_lyrics_from_url(url, retries=3, artist_name=None, song_title=None):
     """Scrape lyrics from a Genius song URL using web scraping."""
     if not url:
         return ''
@@ -583,31 +608,37 @@ def scrape_album(album_id, album_name=None, artist_name=None):
         results = []
         for i, track in enumerate(tracks, 1):
             title = track.get('title', 'Unknown')
-            logger.info(f"[{i}/{len(tracks)}] Searching Genius for: {artist_name} - {title}")
+            logger.info(f"[{i}/{len(tracks)}] Fetching lyrics for: {artist_name} - {title}")
 
-            # Search Genius for this song
-            genius_url = search_song_genius(artist_name, title)
+            lyrics = None
+            source_url = None
 
-            if genius_url:
-                # Scrape lyrics from Genius URL
-                lyrics = _scrape_lyrics_from_url(genius_url)
-                if lyrics:
-                    results.append({
-                        'title': title,
-                        'artist': artist_name,
-                        'album': album_name,
-                        'year': album_year,
-                        'lyrics': lyrics,
-                        'url': genius_url
-                    })
-                    logger.info(f"  ✓ Got {len(lyrics)} chars of lyrics")
-                else:
-                    logger.warning(f"  ✗ Could not scrape lyrics from: {genius_url}")
+            # Try lyrics.ovh first (free API, no scraping)
+            lyrics = _fetch_lyrics_lyricsovh(artist_name, title)
+            if lyrics:
+                source_url = f"https://lyrics.ovh/v1/{artist_name}/{title}"
             else:
-                logger.warning(f"  ✗ No Genius match for: {title}")
+                # Fall back to Genius search + scraping
+                genius_url = search_song_genius(artist_name, title)
+                if genius_url:
+                    lyrics = _scrape_lyrics_from_url(genius_url, artist_name=artist_name, song_title=title)
+                    source_url = genius_url
+
+            if lyrics:
+                results.append({
+                    'title': title,
+                    'artist': artist_name,
+                    'album': album_name,
+                    'year': album_year,
+                    'lyrics': lyrics,
+                    'url': source_url
+                })
+                logger.info(f"  ✓ Got {len(lyrics)} chars of lyrics")
+            else:
+                logger.warning(f"  ✗ Could not find lyrics for: {title}")
 
             # Rate limiting
-            time.sleep(0.5)
+            time.sleep(0.3)
 
         logger.info(f"=== SCRAPING COMPLETE: {len(results)}/{len(tracks)} songs with lyrics ===")
         return results
