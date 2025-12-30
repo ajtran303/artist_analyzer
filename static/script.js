@@ -1,196 +1,374 @@
 /**
- * Home page JavaScript - Two-step album selection flow
+ * Home page JavaScript - Two-step album selection flow with infinite scroll
  */
 
-document.addEventListener('DOMContentLoaded', function() {
-    // Search form elements
-    const searchForm = document.getElementById('search-form');
-    const artistInput = document.getElementById('artist-name');
-    const searchBtn = document.getElementById('search-btn');
-    const searchBtnText = searchBtn.querySelector('.btn-text');
-    const searchBtnLoading = searchBtn.querySelector('.btn-loading');
-    const errorMessage = document.getElementById('error-message');
+document.addEventListener("DOMContentLoaded", function () {
+  // Search form elements
+  const searchForm = document.getElementById("search-form");
+  const artistInput = document.getElementById("artist-name");
+  const searchBtn = document.getElementById("search-btn");
+  const searchBtnText = searchBtn.querySelector(".btn-text");
+  const searchBtnLoading = searchBtn.querySelector(".btn-loading");
+  const errorMessage = document.getElementById("error-message");
 
-    // Album section elements
-    const albumSection = document.getElementById('album-section');
-    const artistDisplay = document.getElementById('artist-display');
-    const albumGrid = document.getElementById('album-grid');
+  // Loading section elements
+  const loadingSection = document.getElementById("loading-section");
+  const loadingStatus = document.getElementById("loading-status");
+  const loadingFunFact = document.getElementById("loading-fun-fact");
 
-    // State
-    let selectedAlbum = null;
-    let currentArtist = null;
-    let isAnalyzing = false;
+  // Album section elements
+  const albumSection = document.getElementById("album-section");
+  const artistDisplay = document.getElementById("artist-display");
+  const albumGrid = document.getElementById("album-grid");
 
-    // Search form submission
-    searchForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
+  // State
+  let selectedAlbum = null;
+  let currentArtist = null;
+  let currentArtistId = null;
+  let currentArtistName = null;
+  let isAnalyzing = false;
 
-        const artistName = artistInput.value.trim();
-        if (!artistName) {
-            showError('Please enter an artist name');
-            return;
-        }
+  // Pagination state
+  let currentPage = 1;
+  let hasMore = false;
+  let isLoadingMore = false;
+  let totalAlbums = 0;
+  let albumIndex = 0; // For playlist numbering
 
-        setSearchLoading(true);
-        hideError();
-        hideAlbumSection();
+  // Fun facts interval
+  let funFactInterval = null;
 
-        try {
-            const response = await fetch(`/api/artists/search?q=${encodeURIComponent(artistName)}`);
-            const data = await response.json();
+  // Fun facts about lyrics and music
+  const funFacts = [
+    "The word 'love' is the most common word in song lyrics across all genres.",
+    "Hip-hop lyrics contain the largest vocabulary of any music genre.",
+    "The Beatles wrote over 300 songs, making them one of the most analyzed artists in music history.",
+    "Song lyrics have become more repetitive over the past 50 years, according to research.",
+    "Eminem holds the record for most words in a hit single with 'Rap God' at 1,560 words.",
+    "Country music lyrics mention trucks, beer, and rain more than any other genre.",
+    "Taylor Swift's lyrics have been studied by linguists for their narrative complexity.",
+    "The word 'baby' appears in over 25% of all Billboard Hot 100 songs.",
+    "Bob Dylan won the Nobel Prize in Literature partly for his lyrical compositions.",
+    "The average hit song has a reading level of about 3rd grade.",
+    "K-pop lyrics often mix Korean, English, and Japanese in a single song.",
+    "Spotify uses NLP to analyze lyrics for mood-based playlist recommendations.",
+    "Queen's 'Bohemian Rhapsody' contains over 900 individual vocal overdubs.",
+    "The Beatles used the word 'love' 613 times across their discography.",
+    "Daft Punk's 'Around the World' repeats the title phrase exactly 144 times.",
+    "Prince wrote over 500 songs that were never released during his lifetime.",
+    "The most common rhyme scheme in pop music is ABAB.",
+    "Songs in minor keys are perceived as sadder regardless of lyrical content.",
+    "Finnish has produced more metal bands per capita than any other country.",
+    "Radiohead's lyrics are considered some of the most linguistically complex in rock music.",
+  ];
 
-            if (response.ok) {
-                currentArtist = data;
-                displayAlbums(data);
-            } else {
-                showError(data.error || 'Artist not found');
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            showError('Network error. Please try again.');
-        } finally {
-            setSearchLoading(false);
-        }
+  // Search form submission
+  searchForm.addEventListener("submit", async function (e) {
+    e.preventDefault();
+
+    const artistName = artistInput.value.trim();
+    if (!artistName) {
+      showError("Please enter an artist name");
+      return;
+    }
+
+    // Reset pagination state
+    currentPage = 1;
+    hasMore = false;
+    currentArtistId = null;
+    currentArtistName = null;
+
+    setSearchLoading(true);
+    hideError();
+    hideAlbumSection();
+    showLoadingSection(artistName);
+
+    try {
+      const response = await fetch(
+        `/api/artists/search?q=${encodeURIComponent(artistName)}&page=1`
+      );
+      const data = await response.json();
+
+      hideLoadingSection();
+
+      if (response.ok) {
+        currentArtist = data;
+        currentArtistId = data.artist_id;
+        currentArtistName = data.artist_name;
+        hasMore = data.has_more;
+        currentPage = data.next_page || 2;
+        displayAlbums(data, false);
+      } else {
+        showError(data.error || "Artist not found");
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      hideLoadingSection();
+      showError("Network error. Please try again.");
+    } finally {
+      setSearchLoading(false);
+    }
+  });
+
+  // Infinite scroll handler - on the album list container
+  albumGrid.addEventListener("scroll", async function () {
+    if (!hasMore || isLoadingMore || !currentArtistId) return;
+
+    // Check if near bottom of scrollable container
+    const scrollTop = albumGrid.scrollTop;
+    const scrollHeight = albumGrid.scrollHeight;
+    const clientHeight = albumGrid.clientHeight;
+
+    if (scrollTop + clientHeight >= scrollHeight - 100) {
+      await loadMoreAlbums();
+    }
+  });
+
+  async function loadMoreAlbums() {
+    if (isLoadingMore || !hasMore || !currentArtistId) return;
+
+    isLoadingMore = true;
+
+    // Show loading indicator
+    showLoadingIndicator();
+
+    try {
+      // Use artist ID endpoint for faster pagination (no re-search)
+      const url = `/api/artists/${currentArtistId}/albums?page=${currentPage}&artist_name=${encodeURIComponent(
+        currentArtistName
+      )}`;
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (response.ok) {
+        hasMore = data.has_more;
+        currentPage = data.next_page || currentPage + 1;
+        appendAlbums(data.albums);
+        updateAlbumCount();
+      }
+    } catch (error) {
+      console.error("Error loading more albums:", error);
+    } finally {
+      isLoadingMore = false;
+      hideLoadingIndicator();
+    }
+  }
+
+  function displayAlbums(data, append = false) {
+    artistDisplay.textContent = data.artist_name;
+
+    if (!append) {
+      albumGrid.innerHTML = "";
+      selectedAlbum = null;
+      albumIndex = 0;
+    }
+
+    if (!data.albums || data.albums.length === 0) {
+      if (!append) {
+        albumGrid.innerHTML =
+          '<p class="no-albums">No albums found for this artist</p>';
+      }
+      albumSection.classList.remove("hidden");
+      return;
+    }
+
+    appendAlbums(data.albums);
+    updateAlbumCount();
+    albumSection.classList.remove("hidden");
+  }
+
+  function appendAlbums(albums) {
+    albums.forEach((album) => {
+      albumIndex++;
+      const albumItem = document.createElement("div");
+      albumItem.className = "album-item";
+      albumItem.dataset.albumId = album.id;
+
+      const year = album.year || "";
+      const yearDisplay = year ? `(${year})` : "";
+
+      albumItem.innerHTML = `
+        <span class="album-index">${albumIndex}.</span>
+        <div class="album-info">
+          <span class="album-name">${album.name}</span>
+          <span class="album-year">${yearDisplay}</span>
+        </div>
+        <div class="album-action hidden">
+          <button class="analyze-album-btn">
+            <span class="btn-text">Analyze</span>
+            <span class="btn-loading hidden">
+              <span class="spinner"></span>
+            </span>
+          </button>
+        </div>
+      `;
+
+      albumItem.addEventListener("click", (e) => {
+        // Don't toggle selection if clicking the button itself
+        if (e.target.closest(".analyze-album-btn")) return;
+        selectAlbum(albumItem, album);
+      });
+
+      // Add click handler for the analyze button
+      const analyzeBtn = albumItem.querySelector(".analyze-album-btn");
+      analyzeBtn.addEventListener("click", () =>
+        analyzeAlbum(album, analyzeBtn)
+      );
+
+      albumGrid.appendChild(albumItem);
+    });
+  }
+
+  function updateAlbumCount() {
+    // Create or get the notice element
+    let notice = document.querySelector(".album-limit-notice");
+    if (!notice) {
+      notice = document.createElement("p");
+      notice.className = "album-limit-notice";
+      albumSection.appendChild(notice);
+    }
+
+    const loadedCount = albumGrid.querySelectorAll(".album-item").length;
+    if (hasMore) {
+      notice.textContent = `${loadedCount} releases loaded (scroll for more)`;
+    } else {
+      notice.textContent = `${loadedCount} releases`;
+    }
+  }
+
+  function showLoadingIndicator() {
+    let loader = document.getElementById("load-more-indicator");
+    if (!loader) {
+      loader = document.createElement("div");
+      loader.id = "load-more-indicator";
+      loader.className = "load-more-indicator";
+      loader.innerHTML = '<span class="spinner"></span> Loading more albums...';
+      albumSection.appendChild(loader);
+    }
+    loader.classList.remove("hidden");
+  }
+
+  function hideLoadingIndicator() {
+    const loader = document.getElementById("load-more-indicator");
+    if (loader) {
+      loader.classList.add("hidden");
+    }
+  }
+
+  function selectAlbum(item, album) {
+    if (isAnalyzing) return;
+
+    // Remove selection and hide button from all items
+    document.querySelectorAll(".album-item").forEach((el) => {
+      el.classList.remove("selected");
+      el.querySelector(".album-action").classList.add("hidden");
     });
 
-    function displayAlbums(data) {
-        artistDisplay.textContent = data.artist_name;
-        albumGrid.innerHTML = '';
-        selectedAlbum = null;
+    // Select this item and show its button
+    item.classList.add("selected");
+    item.querySelector(".album-action").classList.remove("hidden");
+    selectedAlbum = album;
+  }
 
-        if (!data.albums || data.albums.length === 0) {
-            albumGrid.innerHTML = '<p class="no-albums">No albums found for this artist</p>';
-            albumSection.classList.remove('hidden');
-            return;
-        }
+  async function analyzeAlbum(album, button) {
+    if (isAnalyzing || !currentArtist) return;
 
-        data.albums.forEach(album => {
-            const albumCard = document.createElement('div');
-            albumCard.className = 'album-card';
-            albumCard.dataset.albumId = album.id;
+    isAnalyzing = true;
+    const btnText = button.querySelector(".btn-text");
+    const btnLoading = button.querySelector(".btn-loading");
 
-            const coverUrl = album.cover_art_url || '/static/placeholder-album.png';
-            const year = album.year || '';
+    button.disabled = true;
+    btnText.classList.add("hidden");
+    btnLoading.classList.remove("hidden");
 
-            albumCard.innerHTML = `
-                <div class="album-cover">
-                    <img src="${coverUrl}" alt="${album.name}" onerror="this.src='/static/placeholder-album.png'">
-                </div>
-                <div class="album-info">
-                    <h3 class="album-name">${album.name}</h3>
-                    <span class="album-year">${year}</span>
-                </div>
-                <div class="album-action hidden">
-                    <button class="analyze-album-btn">
-                        <span class="btn-text">Analyze</span>
-                        <span class="btn-loading hidden">
-                            <span class="spinner"></span>
-                        </span>
-                    </button>
-                </div>
-            `;
+    try {
+      const response = await fetch("/api/analyze", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          artist_name: currentArtist.artist_name,
+          album_id: album.id,
+          album_name: album.name,
+        }),
+      });
 
-            albumCard.addEventListener('click', (e) => {
-                // Don't toggle selection if clicking the button itself
-                if (e.target.closest('.analyze-album-btn')) return;
-                selectAlbum(albumCard, album);
-            });
+      const data = await response.json();
 
-            // Add click handler for the analyze button
-            const analyzeBtn = albumCard.querySelector('.analyze-album-btn');
-            analyzeBtn.addEventListener('click', () => analyzeAlbum(album, analyzeBtn));
-
-            albumGrid.appendChild(albumCard);
-        });
-
-        albumSection.classList.remove('hidden');
+      if (response.ok) {
+        window.location.href = `/results/${data.job_id}`;
+      } else {
+        showError(data.error || "Failed to start analysis");
+        resetAnalyzeButton(button);
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      showError("Network error. Please try again.");
+      resetAnalyzeButton(button);
     }
+  }
 
-    function selectAlbum(card, album) {
-        if (isAnalyzing) return;
+  function resetAnalyzeButton(button) {
+    isAnalyzing = false;
+    button.disabled = false;
+    button.querySelector(".btn-text").classList.remove("hidden");
+    button.querySelector(".btn-loading").classList.add("hidden");
+  }
 
-        // Remove selection and hide button from all cards
-        document.querySelectorAll('.album-card').forEach(c => {
-            c.classList.remove('selected');
-            c.querySelector('.album-action').classList.add('hidden');
-        });
+  function setSearchLoading(loading) {
+    searchBtn.disabled = loading;
+    artistInput.disabled = loading;
 
-        // Select this card and show its button
-        card.classList.add('selected');
-        card.querySelector('.album-action').classList.remove('hidden');
-        selectedAlbum = album;
+    if (loading) {
+      searchBtnText.classList.add("hidden");
+      searchBtnLoading.classList.remove("hidden");
+    } else {
+      searchBtnText.classList.remove("hidden");
+      searchBtnLoading.classList.add("hidden");
     }
+  }
 
-    async function analyzeAlbum(album, button) {
-        if (isAnalyzing || !currentArtist) return;
+  function hideAlbumSection() {
+    albumSection.classList.add("hidden");
+    selectedAlbum = null;
+  }
 
-        isAnalyzing = true;
-        const btnText = button.querySelector('.btn-text');
-        const btnLoading = button.querySelector('.btn-loading');
+  function showError(message) {
+    errorMessage.textContent = message;
+    errorMessage.classList.remove("hidden");
+  }
 
-        button.disabled = true;
-        btnText.classList.add('hidden');
-        btnLoading.classList.remove('hidden');
+  function hideError() {
+    errorMessage.classList.add("hidden");
+  }
 
-        try {
-            const response = await fetch('/api/analyze', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    artist_name: currentArtist.artist_name,
-                    album_id: album.id,
-                    album_name: album.name
-                }),
-            });
+  function showLoadingSection(artistName) {
+    loadingSection.classList.remove("hidden");
+    loadingStatus.textContent = `Searching for "${artistName}"...`;
 
-            const data = await response.json();
+    // Show initial fun fact
+    showFunFact();
 
-            if (response.ok) {
-                window.location.href = `/results/${data.job_id}`;
-            } else {
-                showError(data.error || 'Failed to start analysis');
-                resetAnalyzeButton(button);
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            showError('Network error. Please try again.');
-            resetAnalyzeButton(button);
-        }
+    // Rotate fun facts every 4 seconds
+    funFactInterval = setInterval(showFunFact, 4000);
+  }
+
+  function hideLoadingSection() {
+    loadingSection.classList.add("hidden");
+
+    // Clear fun fact rotation
+    if (funFactInterval) {
+      clearInterval(funFactInterval);
+      funFactInterval = null;
     }
+  }
 
-    function resetAnalyzeButton(button) {
-        isAnalyzing = false;
-        button.disabled = false;
-        button.querySelector('.btn-text').classList.remove('hidden');
-        button.querySelector('.btn-loading').classList.add('hidden');
-    }
-
-    function setSearchLoading(loading) {
-        searchBtn.disabled = loading;
-        artistInput.disabled = loading;
-
-        if (loading) {
-            searchBtnText.classList.add('hidden');
-            searchBtnLoading.classList.remove('hidden');
-        } else {
-            searchBtnText.classList.remove('hidden');
-            searchBtnLoading.classList.add('hidden');
-        }
-    }
-
-    function hideAlbumSection() {
-        albumSection.classList.add('hidden');
-        selectedAlbum = null;
-    }
-
-    function showError(message) {
-        errorMessage.textContent = message;
-        errorMessage.classList.remove('hidden');
-    }
-
-    function hideError() {
-        errorMessage.classList.add('hidden');
-    }
+  function showFunFact() {
+    loadingFunFact.classList.remove("fade-in");
+    void loadingFunFact.offsetWidth; // Trigger reflow for animation restart
+    const randomIndex = Math.floor(Math.random() * funFacts.length);
+    loadingFunFact.textContent = funFacts[randomIndex];
+    loadingFunFact.classList.add("fade-in");
+  }
 });

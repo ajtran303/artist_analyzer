@@ -73,18 +73,23 @@ def get_rate_limiter():
 @api_bp.route('/artists/search', methods=['GET'])
 def search_artists():
     """
-    Search for an artist and return their albums.
+    Search for an artist and return their albums with pagination.
 
     Query params:
         q: Artist name to search
+        page: Page number (default: 1)
 
     Returns:
-        {artist_id, artist_name, albums: [{id, name, cover_art_url, year}]}
+        {artist_id, artist_name, albums: [...], has_more, total, page}
     """
     query = request.args.get('q', '').strip()
+    page = request.args.get('page', 1, type=int)
 
     if not query:
         return jsonify({'error': 'Search query required'}), 400
+
+    if page < 1:
+        page = 1
 
     # Sanitize and validate
     query = sanitize_input(query)
@@ -96,7 +101,7 @@ def search_artists():
     try:
         from pipeline.scraper import search_artist_albums
 
-        result = search_artist_albums(query)
+        result = search_artist_albums(query, page=page, per_page=20)
 
         if not result:
             return jsonify({'error': 'Artist not found'}), 404
@@ -105,6 +110,39 @@ def search_artists():
 
     except Exception as e:
         logger.error(f"Error searching artists: {type(e).__name__}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+
+@api_bp.route('/artists/<int:artist_id>/albums', methods=['GET'])
+def get_artist_albums(artist_id):
+    """
+    Get albums for an artist by ID (for pagination).
+
+    Query params:
+        page: Page number (default: 1)
+        artist_name: Artist name for response
+
+    Returns:
+        {artist_id, artist_name, albums: [...], has_more, total, page}
+    """
+    page = request.args.get('page', 1, type=int)
+    artist_name = request.args.get('artist_name', '')
+
+    if page < 1:
+        page = 1
+
+    try:
+        from pipeline.scraper import get_artist_albums_by_id
+
+        result = get_artist_albums_by_id(artist_id, artist_name, page=page, per_page=20)
+
+        if not result:
+            return jsonify({'error': 'Failed to fetch albums'}), 500
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        logger.error(f"Error getting artist albums: {type(e).__name__}")
         return jsonify({'error': 'Internal server error'}), 500
 
 
@@ -175,9 +213,9 @@ def submit_analysis():
         # Create new analysis
         analysis = Analysis.create(artist_name, album_id=album_id, album_name=album_name)
 
-        # Queue Celery task
+        # Queue Celery task (pass artist_name for Genius search)
         from pipeline.tasks import analyze_album_async
-        task = analyze_album_async.delay(album_id, album_name, analysis.id)
+        task = analyze_album_async.delay(album_id, album_name, analysis.id, artist_name)
 
         # Update analysis with job ID
         analysis.job_id = task.id

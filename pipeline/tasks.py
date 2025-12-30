@@ -162,14 +162,15 @@ def analyze_artist_async(self, artist_name: str, analysis_id: int):
     retry_backoff_max=600,
     retry_jitter=True,
 )
-def analyze_album_async(self, album_id: int, album_name: str, analysis_id: int):
+def analyze_album_async(self, album_id: int, album_name: str, analysis_id: int, artist_name: str = None):
     """
     Async task to analyze a single album's lyrics.
 
     Args:
-        album_id: Genius album ID
+        album_id: Discogs master/release ID
         album_name: Name of the album
         analysis_id: ID of the Analysis record
+        artist_name: Name of the artist (for Genius search)
 
     Returns:
         Analysis results dict
@@ -191,18 +192,21 @@ def analyze_album_async(self, album_id: int, album_name: str, analysis_id: int):
             return None
 
         try:
+            # Get artist name from analysis if not provided
+            if not artist_name:
+                artist_name = analysis.artist_name
+
             # Stage 1: Scraping
             logger.info(f"========== STAGE 1/6: SCRAPING ==========")
             self.update_state(state='PROGRESS', meta={'progress': 'Scraping lyrics from Genius...'})
             analysis.update_status('processing', 'Scraping lyrics from Genius...')
 
-            songs_data = scrape_album(album_id, album_name)
+            # Use Discogs for tracks, Genius for lyrics
+            songs_data = scrape_album(album_id, album_name, artist_name)
 
             if not songs_data:
                 analysis.mark_failed(f"No songs found for album: {album_name}")
                 return {'error': 'No songs found'}
-
-            artist_name = analysis.artist_name
 
             # Stage 2: Preprocessing
             logger.info(f"========== STAGE 2/6: PREPROCESSING ==========")

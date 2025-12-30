@@ -1,65 +1,85 @@
-{% extends "base.html" %}
-
-{% block title %}Artist Lyrical Analysis - Home{% endblock %}
-
-{% block content %}
+{% extends "base.html" %} {% block title %}Artist Lyrical Analysis - Home{%
+endblock %} {% block content %}
 <div class="hero">
-    <h1>Artist Lyrical Analysis</h1>
-    <p class="subtitle">Discover hidden themes, track sentiment evolution, and reveal lyrical patterns</p>
+  <h1>Artist Lyrical Analysis</h1>
+  <p class="subtitle">
+    Discover hidden themes, track sentiment evolution, and reveal lyrical
+    patterns
+  </p>
 </div>
 
 <!-- Step 1: Search for Artist -->
 <div class="search-section">
-    <form id="search-form" class="analyze-form">
-        <div class="input-group">
-            <input
-                type="text"
-                id="artist-name"
-                name="artist_name"
-                placeholder="Enter artist name (e.g., The Cure)"
-                required
-                autocomplete="off"
-            >
-            <button type="submit" id="search-btn">
-                <span class="btn-text">Search</span>
-                <span class="btn-loading hidden">
-                    <span class="spinner"></span>
-                    Searching...
-                </span>
-            </button>
-        </div>
-        <p class="language-notice">English lyrics only — sentiment analysis and theme detection are optimized for English.</p>
-    </form>
+  <form id="search-form" class="analyze-form">
+    <div class="input-group">
+      <input
+        type="text"
+        id="artist-name"
+        name="artist_name"
+        placeholder="Enter artist name (e.g., The Cure)"
+        required
+        autocomplete="off"
+      />
+      <button type="submit" id="search-btn">
+        <span class="btn-text">Search</span>
+        <span class="btn-loading hidden">
+          <span class="spinner"></span>
+          Searching...
+        </span>
+      </button>
+    </div>
+    <p class="language-notice">
+      English lyrics only — sentiment analysis and theme detection are optimized
+      for English.
+    </p>
+  </form>
 
-    <div id="error-message" class="error-message hidden"></div>
+  <div id="error-message" class="error-message hidden"></div>
+</div>
+
+<!-- Loading Albums Section (hidden initially) -->
+<div id="loading-section" class="loading-section hidden">
+  <div class="loading-content">
+    <div class="loading-header">
+      <span class="spinner spinner-large"></span>
+      <h2>Loading Albums</h2>
+    </div>
+    <div class="progress-bar-container">
+      <div class="progress-bar">
+        <div id="album-progress-fill" class="progress-fill progress-indeterminate"></div>
+      </div>
+    </div>
+    <p id="loading-status" class="loading-status">Searching for artist...</p>
+    <div class="fun-fact-container">
+      <span class="fun-fact-label">Did you know?</span>
+      <p id="loading-fun-fact" class="fun-fact"></p>
+    </div>
+  </div>
 </div>
 
 <!-- Step 2: Album Selection (hidden initially) -->
 <div id="album-section" class="album-section hidden">
-    <div class="album-header">
-        <h2 id="artist-display"></h2>
-        <p class="album-instruction">Select an album to analyze</p>
-    </div>
-    <div id="album-grid" class="album-grid"></div>
-    <p class="album-limit-notice">Showing up to 50 most recent albums</p>
+  <div class="album-header">
+    <h2 id="artist-display"></h2>
+    <p class="album-instruction">Select an album to analyze</p>
+  </div>
+  <div id="album-grid" class="album-grid"></div>
 </div>
 
 <div class="features">
-    <div class="feature-card">
-        <h3>Topic Discovery</h3>
-        <p>Uses LDA to discover 5-8 hidden themes in the album's lyrics</p>
-    </div>
-    <div class="feature-card">
-        <h3>Sentiment Timeline</h3>
-        <p>Track emotional evolution across the album</p>
-    </div>
-    <div class="feature-card">
-        <h3>Lyrical Patterns</h3>
-        <p>Identify recurring metaphors and word frequencies</p>
-    </div>
+  <div class="feature-card">
+    <h3>Topic Discovery</h3>
+    <p>Uses LDA to discover 5-8 hidden themes in the album's lyrics</p>
+  </div>
+  <div class="feature-card">
+    <h3>Sentiment Timeline</h3>
+    <p>Track emotional evolution across the album</p>
+  </div>
+  <div class="feature-card">
+    <h3>Lyrical Patterns</h3>
+    <p>Identify recurring metaphors and word frequencies</p>
+  </div>
 </div>
-{% endblock %}
-
-{% block scripts %}
+{% endblock %} {% block scripts %}
 <script src="{{ url_for('static', filename='script.js') }}"></script>
 {% endblock %}

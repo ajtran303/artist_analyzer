@@ -10,6 +10,7 @@ services:
       - DATABASE_URL=postgresql://analyzer_user:${DB_PASSWORD}@db:5432/artist_analyzer
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - GENIUS_API_TOKEN=${GENIUS_API_TOKEN}
+      - DISCOGS_API_TOKEN=${DISCOGS_API_TOKEN}
       - SECRET_KEY=${SECRET_KEY}
       - CORS_ORIGINS=${CORS_ORIGINS:-*}
       - FORCE_HTTPS=false
@@ -53,6 +54,7 @@ services:
       - DATABASE_URL=postgresql://analyzer_user:${DB_PASSWORD}@db:5432/artist_analyzer
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - GENIUS_API_TOKEN=${GENIUS_API_TOKEN}
+      - DISCOGS_API_TOKEN=${DISCOGS_API_TOKEN}
       - SECRET_KEY=${SECRET_KEY}
       - PYTHONPATH=/app
     depends_on:

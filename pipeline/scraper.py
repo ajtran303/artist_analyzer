@@ -1,4 +1,4 @@
-"""Genius API scraper for fetching artist lyrics using lyricsgenius."""
+"""Hybrid scraper using Discogs for metadata and Genius for lyrics."""
 
 import os
 import re
@@ -11,6 +11,15 @@ from lyricsgenius import Genius, PublicAPI
 logger = logging.getLogger(__name__)
 
 GENIUS_TOKEN = os.environ.get('GENIUS_API_TOKEN', '')
+
+# Import Discogs client functions
+from pipeline.discogs_client import (
+    search_artist as discogs_search_artist,
+    get_artist_albums as discogs_get_artist_albums,
+    get_release_tracks as discogs_get_release_tracks,
+    get_release_info as discogs_get_release_info,
+    DiscogsError
+)
 
 
 class ScraperError(Exception):
@@ -357,95 +366,240 @@ def _extract_year_from_date(date_str):
     return None
 
 
-def search_artist_albums(artist_name):
+def search_song_genius(artist_name, song_title):
     """
-    Search for an artist and return their albums.
+    Search Genius for a song using the official API.
+
+    Args:
+        artist_name: Name of the artist
+        song_title: Title of the song
+
+    Returns:
+        URL of the song on Genius, or None if not found
+    """
+    if not GENIUS_TOKEN:
+        logger.warning("No Genius API token configured")
+        return None
+
+    headers = {
+        'Authorization': f'Bearer {GENIUS_TOKEN}',
+        'User-Agent': 'ArtistAnalyzer/1.0',
+    }
+
+    try:
+        # Search using official Genius API
+        response = requests.get(
+            'https://api.genius.com/search',
+            params={'q': f'{artist_name} {song_title}'},
+            headers=headers,
+            timeout=30
+        )
+        response.raise_for_status()
+
+        data = response.json()
+        hits = data.get('response', {}).get('hits', [])
+
+        if not hits:
+            logger.debug(f"No Genius results for: {artist_name} - {song_title}")
+            return None
+
+        # Find best match - prefer exact artist match
+        artist_lower = artist_name.lower()
+        song_lower = song_title.lower()
+
+        for hit in hits:
+            result = hit.get('result', {})
+            result_artist = result.get('primary_artist', {}).get('name', '').lower()
+            result_title = result.get('title', '').lower()
+
+            # Check if artist matches (fuzzy)
+            if artist_lower in result_artist or result_artist in artist_lower:
+                # Check if song title is similar
+                if _titles_match(song_lower, result_title):
+                    url = result.get('url')
+                    logger.debug(f"Found Genius match: {url}")
+                    return url
+
+        # Fall back to first result if no exact match
+        first_result = hits[0].get('result', {})
+        url = first_result.get('url')
+        logger.debug(f"Using first Genius result: {url}")
+        return url
+
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error searching Genius API: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"Unexpected error searching Genius: {e}")
+        return None
+
+
+def _titles_match(title1, title2):
+    """Check if two song titles match (fuzzy comparison)."""
+    # Normalize titles
+    def normalize(t):
+        # Remove common suffixes, punctuation
+        t = re.sub(r'\s*\(.*?\)', '', t)  # Remove parenthetical
+        t = re.sub(r'\s*\[.*?\]', '', t)  # Remove bracketed
+        t = re.sub(r'[^\w\s]', '', t)  # Remove punctuation
+        return t.lower().strip()
+
+    n1 = normalize(title1)
+    n2 = normalize(title2)
+
+    # Exact match after normalization
+    if n1 == n2:
+        return True
+
+    # One contains the other
+    if n1 in n2 or n2 in n1:
+        return True
+
+    return False
+
+
+def search_artist_albums(artist_name, page=1, per_page=20):
+    """
+    Search for an artist and return their albums using Discogs with pagination.
 
     Args:
         artist_name: Name of the artist to search for
+        page: Page number (1-indexed)
+        per_page: Number of albums per page
 
     Returns:
-        Dict with artist_id, artist_name, and albums list
+        Dict with artist_id, artist_name, albums list, has_more, total
     """
-    public_api = _get_public_api()
-
     try:
-        # Search for the artist using public API
-        artist_id, found_name = _search_artist_public(artist_name)
+        # Search for the artist using Discogs
+        artist_id, found_name = discogs_search_artist(artist_name)
         if not artist_id:
+            logger.warning(f"Artist not found on Discogs: {artist_name}")
             return None
 
-        # Get albums using PublicAPI
-        albums = _get_unique_albums(public_api, artist_id)
+        # Get paginated albums from Discogs
+        return get_artist_albums_by_id(artist_id, found_name or artist_name, page, per_page)
 
-        # Format albums for frontend
-        formatted_albums = []
-        for album in albums:
-            formatted_albums.append({
-                'id': album.get('id'),
-                'name': album.get('name', ''),
-                'cover_art_url': album.get('cover_art_thumbnail_url', ''),
-                'year': _extract_year_from_date(album.get('release_date_for_display')),
-                'artist': album.get('artist', {}).get('name', artist_name)
-            })
-
-        return {
-            'artist_id': artist_id,
-            'artist_name': found_name or artist_name,
-            'albums': formatted_albums
-        }
-
+    except DiscogsError as e:
+        logger.error(f"Discogs API error: {e}")
+        return None
     except Exception as e:
         logger.error(f"Error searching artist albums: {e}")
         return None
 
 
-def scrape_album(album_id, album_name=None):
+def get_artist_albums_by_id(artist_id, artist_name, page=1, per_page=20):
     """
-    Scrape lyrics for all songs in a specific album.
+    Get albums for an artist by ID (for pagination without re-searching).
 
     Args:
-        album_id: Genius album ID
+        artist_id: Discogs artist ID
+        artist_name: Artist name for response
+        page: Page number (1-indexed)
+        per_page: Number of albums per page
+
+    Returns:
+        Dict with artist_id, artist_name, albums list, has_more, total
+    """
+    try:
+        # Get paginated albums from Discogs
+        result = discogs_get_artist_albums(artist_id, page=page, per_page=per_page)
+
+        # Format albums for frontend
+        formatted_albums = []
+        for album in result.get('albums', []):
+            formatted_albums.append({
+                'id': album.get('id'),
+                'name': album.get('name', ''),
+                'year': album.get('year'),
+                'artist': artist_name
+            })
+
+        logger.info(f"Found {len(formatted_albums)} albums (page {page}) for {artist_name} via Discogs")
+        return {
+            'artist_id': artist_id,
+            'artist_name': artist_name,
+            'albums': formatted_albums,
+            'has_more': result.get('has_more', False),
+            'next_page': result.get('next_page', page + 1),
+            'page': page
+        }
+
+    except DiscogsError as e:
+        logger.error(f"Discogs API error: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"Error getting artist albums: {e}")
+        return None
+
+
+def scrape_album(album_id, album_name=None, artist_name=None):
+    """
+    Scrape lyrics for all songs in an album using Discogs + Genius hybrid approach.
+
+    Args:
+        album_id: Discogs master/release ID
         album_name: Album name (optional, for metadata)
+        artist_name: Artist name (required for Genius search)
 
     Returns:
         List of dicts with: title, artist, album, year, lyrics, url
     """
     logger.info(f"=== SCRAPING ALBUM: {album_name} (ID: {album_id}) ===")
-    public_api = _get_public_api()
 
     try:
-        tracks = _get_album_tracks(public_api, album_id)
-        logger.info(f"Found {len(tracks)} tracks in album")
+        # Get release info from Discogs
+        release_info = discogs_get_release_info(album_id, is_master=True)
+        if release_info:
+            if not artist_name:
+                artist_name = release_info.get('artist', '')
+            album_year = release_info.get('year')
+        else:
+            album_year = None
+
+        # Get tracks from Discogs
+        tracks = discogs_get_release_tracks(album_id, is_master=True)
+        logger.info(f"Found {len(tracks)} tracks from Discogs")
+
+        if not tracks:
+            logger.warning(f"No tracks found for album ID {album_id}")
+            return []
+
         results = []
-
         for i, track in enumerate(tracks, 1):
-            song_data = track.get('song', {})
-            url = song_data.get('url', '')
-            title = song_data.get('title', 'Unknown')
+            title = track.get('title', 'Unknown')
+            logger.info(f"[{i}/{len(tracks)}] Searching Genius for: {artist_name} - {title}")
 
-            logger.info(f"[{i}/{len(tracks)}] Scraping: {title}")
+            # Search Genius for this song
+            genius_url = search_song_genius(artist_name, title)
 
-            lyrics = _scrape_lyrics_from_url(url)
-            if lyrics:
-                results.append({
-                    'title': title,
-                    'artist': song_data.get('primary_artist', {}).get('name', ''),
-                    'album': album_name,
-                    'year': _extract_year_from_date(song_data.get('release_date_for_display')),
-                    'lyrics': lyrics,
-                    'url': url
-                })
-                logger.info(f"  ✓ Got {len(lyrics)} chars of lyrics")
+            if genius_url:
+                # Scrape lyrics from Genius URL
+                lyrics = _scrape_lyrics_from_url(genius_url)
+                if lyrics:
+                    results.append({
+                        'title': title,
+                        'artist': artist_name,
+                        'album': album_name,
+                        'year': album_year,
+                        'lyrics': lyrics,
+                        'url': genius_url
+                    })
+                    logger.info(f"  ✓ Got {len(lyrics)} chars of lyrics")
+                else:
+                    logger.warning(f"  ✗ Could not scrape lyrics from: {genius_url}")
             else:
-                logger.warning(f"  ✗ No lyrics found for: {title}")
+                logger.warning(f"  ✗ No Genius match for: {title}")
 
             # Rate limiting
-            time.sleep(0.3)
+            time.sleep(0.5)
 
-        logger.info(f"=== SCRAPING COMPLETE: {len(results)} songs with lyrics ===")
+        logger.info(f"=== SCRAPING COMPLETE: {len(results)}/{len(tracks)} songs with lyrics ===")
         return results
 
+    except DiscogsError as e:
+        logger.error(f"Discogs API error: {e}")
+        raise ScraperError(f"Failed to get album from Discogs: {e}")
     except Exception as e:
         logger.error(f"Error scraping album: {e}")
         raise ScraperError(f"Failed to scrape album: {e}")
