@@ -79,11 +79,11 @@ def create_app(config_class=None):
         application_limits_exempt_when=lambda: False,
     )
 
-    # Exempt status polling endpoint from rate limiting
+    # Exempt status polling and health check endpoints from rate limiting
     @limiter.request_filter
-    def exempt_status_endpoint():
+    def exempt_endpoints():
         from flask import request
-        return request.endpoint == 'api.get_analysis_status'
+        return request.endpoint in ['api.get_analysis_status', 'api.health_check']
 
     # Store limiter on app for use in routes
     app.limiter = limiter
