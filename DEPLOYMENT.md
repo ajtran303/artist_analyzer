@@ -5,8 +5,9 @@
 ### Prerequisites
 
 1. A [Render](https://render.com) account
-2. A [Genius API token](https://genius.com/api-clients)
-3. This repository pushed to GitHub/GitLab
+2. A [Discogs API token](https://www.discogs.com/settings/developers)
+3. (Optional) A [Musixmatch API key](https://developer.musixmatch.com/) for better lyrics coverage
+4. This repository pushed to GitHub/GitLab
 
 ### Option 1: Blueprint (Recommended)
 
@@ -26,8 +27,9 @@ The easiest way to deploy. Render will automatically create all services.
    - `artist-analyzer-redis` (Redis)
    - `artist-analyzer-db` (PostgreSQL)
 
-6. **Set the `GENIUS_API_TOKEN`** environment variable when prompted
-   - This is the only manual step - get your token from [Genius API Clients](https://genius.com/api-clients)
+6. **Set environment variables** when prompted:
+   - `DISCOGS_API_TOKEN` - Required, get from [Discogs Developer Settings](https://www.discogs.com/settings/developers)
+   - `MUSIXMATCH_API_KEY` - Optional but recommended for better lyrics coverage
 
 7. **Click "Apply"** and wait for deployment (~5-10 minutes)
 
@@ -67,7 +69,8 @@ If you prefer to create services individually:
   ```
   FLASK_ENV=production
   SECRET_KEY=<click Generate>
-  GENIUS_API_TOKEN=<your token>
+  DISCOGS_API_TOKEN=<your token>
+  MUSIXMATCH_API_KEY=<your key>  # Optional
   DATABASE_URL=<postgres internal connection string>
   REDIS_URL=<redis internal connection string>
   FORCE_HTTPS=false
@@ -91,7 +94,8 @@ If you prefer to create services individually:
   ```
   FLASK_ENV=production
   SECRET_KEY=<same as web service>
-  GENIUS_API_TOKEN=<your token>
+  DISCOGS_API_TOKEN=<your token>
+  MUSIXMATCH_API_KEY=<your key>  # Optional
   DATABASE_URL=<postgres internal connection string>
   REDIS_URL=<redis internal connection string>
   ```
@@ -108,7 +112,8 @@ If you prefer to create services individually:
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `SECRET_KEY` | Yes | Flask secret key (use Render's "Generate" button) |
-| `GENIUS_API_TOKEN` | Yes | Your Genius API token |
+| `DISCOGS_API_TOKEN` | Yes | Your Discogs API token for artist/album metadata |
+| `MUSIXMATCH_API_KEY` | No | Musixmatch API key for better lyrics coverage |
 | `DATABASE_URL` | Yes | PostgreSQL connection string (auto-set by Render) |
 | `REDIS_URL` | Yes | Redis connection string (auto-set by Render) |
 | `FLASK_ENV` | Yes | Set to `production` |
@@ -160,7 +165,8 @@ If you prefer to create services individually:
 
 ### "No songs found" error
 - Check Worker logs - is it running?
-- Verify `GENIUS_API_TOKEN` is set correctly on both web and worker
+- Verify `DISCOGS_API_TOKEN` is set correctly on both web and worker
+- If lyrics aren't found, consider adding `MUSIXMATCH_API_KEY` for better coverage
 
 ### Analysis stuck at "Starting..."
 - Check if Worker service is running
@@ -184,7 +190,8 @@ If you prefer to create services individually:
 cp .env.example .env
 
 # Edit .env with your values
-# Required: GENIUS_API_TOKEN, SECRET_KEY, DB_PASSWORD, REDIS_PASSWORD
+# Required: DISCOGS_API_TOKEN, SECRET_KEY, DB_PASSWORD, REDIS_PASSWORD
+# Optional: MUSIXMATCH_API_KEY (recommended for better lyrics coverage)
 
 # Start all services
 docker-compose up --build
@@ -211,6 +218,6 @@ docker-compose up --build
 ```
 
 1. User submits analysis request → Web service creates task in Redis
-2. Celery worker picks up task → Scrapes Genius, runs NLP pipeline
+2. Celery worker picks up task → Fetches lyrics from Musixmatch/lyrics.ovh, runs NLP pipeline
 3. Worker saves results to PostgreSQL
 4. Web service polls for completion → Returns results to user

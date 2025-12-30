@@ -29,8 +29,6 @@ services:
         value: /app
       - key: SECRET_KEY
         generateValue: true
-      - key: GENIUS_API_TOKEN
-        sync: false # Set manually in Render dashboard
       - key: DISCOGS_API_TOKEN
         sync: false # Set manually in Render dashboard
       - key: MUSIXMATCH_API_KEY
@@ -69,8 +67,6 @@ services:
         value: /app
       - key: SECRET_KEY
         generateValue: true
-      - key: GENIUS_API_TOKEN
-        sync: false # Set manually in Render dashboard
       - key: DISCOGS_API_TOKEN
         sync: false # Set manually in Render dashboard
       - key: MUSIXMATCH_API_KEY

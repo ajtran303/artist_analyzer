@@ -25,9 +25,6 @@ class Config:
     broker_url = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
     result_backend = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
 
-    # Genius API
-    GENIUS_API_TOKEN = os.environ.get('GENIUS_API_TOKEN')
-
     # Scraper settings
     MAX_SONGS_PER_ARTIST = int(os.environ.get('MAX_SONGS_PER_ARTIST', 50))
     REQUEST_TIMEOUT = int(os.environ.get('REQUEST_TIMEOUT', 30))
@@ -97,8 +94,8 @@ config = {
 
 # Required environment variables for production
 REQUIRED_ENV_VARS = {
-    'production': ['SECRET_KEY', 'DATABASE_URL', 'GENIUS_API_TOKEN'],
-    'development': ['GENIUS_API_TOKEN'],  # Minimum for dev
+    'production': ['SECRET_KEY', 'DATABASE_URL'],
+    'development': [],  # Minimum for dev
 }
 
 

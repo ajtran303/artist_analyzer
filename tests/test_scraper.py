@@ -1,4 +1,4 @@
-"""Unit tests for scraper using lyricsgenius PublicAPI."""
+"""Unit tests for scraper module."""
 
 import pytest
 from unittest.mock import patch, MagicMock
@@ -111,25 +111,27 @@ class TestScrapeAlbum:
 
     @patch('pipeline.scraper.discogs_get_release_info')
     @patch('pipeline.scraper.discogs_get_release_tracks')
-    @patch('pipeline.scraper.search_song_genius')
-    @patch('pipeline.scraper._scrape_lyrics_from_url')
-    def test_returns_songs_from_album(self, mock_lyrics, mock_genius, mock_tracks, mock_info):
+    @patch('pipeline.scraper._fetch_lyrics_musixmatch')
+    @patch('pipeline.scraper._fetch_lyrics_lyricsovh')
+    def test_returns_songs_from_album(self, mock_lyricsovh, mock_musixmatch, mock_tracks, mock_info):
         """Returns song data for album tracks."""
         mock_info.return_value = {'artist': 'Test Artist', 'year': 2020}
         mock_tracks.return_value = [
             {'title': 'Track 1', 'position': '1'},
             {'title': 'Track 2', 'position': '2'}
         ]
-        mock_genius.side_effect = ['http://genius.com/song1', 'http://genius.com/song2']
-        mock_lyrics.side_effect = ['Lyrics 1', 'Lyrics 2']
+        mock_musixmatch.side_effect = ['Lyrics 1', 'Lyrics 2']
+        mock_lyricsovh.return_value = None  # Not called since musixmatch succeeds
 
         result = scrape_album(12345, 'Test Album')
 
-        assert len(result) == 2
-        assert result[0]['title'] == 'Track 1'
-        assert result[0]['lyrics'] == 'Lyrics 1'
-        assert result[0]['album'] == 'Test Album'
-        assert result[0]['artist'] == 'Test Artist'
+        assert result['total_tracks'] == 2
+        assert result['tracks_with_lyrics'] == 2
+        assert len(result['songs']) == 2
+        assert result['songs'][0]['title'] == 'Track 1'
+        assert result['songs'][0]['lyrics'] == 'Lyrics 1'
+        assert result['songs'][0]['album'] == 'Test Album'
+        assert result['songs'][0]['artist'] == 'Test Artist'
 
     @patch('pipeline.scraper.discogs_get_release_info')
     @patch('pipeline.scraper.discogs_get_release_tracks')
@@ -227,7 +229,7 @@ class TestScrapeLyricsFromUrl:
 
     @patch('pipeline.scraper.requests.get')
     def test_extracts_lyrics_from_page(self, mock_get):
-        """Extracts lyrics from Genius page."""
+        """Extracts lyrics from page."""
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.text = '''

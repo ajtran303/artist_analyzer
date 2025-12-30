@@ -56,8 +56,8 @@ def analyze_artist_async(self, artist_name: str, analysis_id: int):
 
         try:
             # Stage 1: Scraping
-            self.update_state(state='PROGRESS', meta={'progress': 'Scraping lyrics from Genius...'})
-            analysis.update_status('processing', 'Scraping lyrics from Genius...')
+            self.update_state(state='PROGRESS', meta={'progress': 'Fetching lyrics...'})
+            analysis.update_status('processing', 'Fetching lyrics...')
 
             songs_data = scrape_genius(artist_name)
 
@@ -170,7 +170,7 @@ def analyze_album_async(self, album_id: int, album_name: str, analysis_id: int, 
         album_id: Discogs master/release ID
         album_name: Name of the album
         analysis_id: ID of the Analysis record
-        artist_name: Name of the artist (for Genius search)
+        artist_name: Name of the artist (for lyrics search)
 
     Returns:
         Analysis results dict

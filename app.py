@@ -113,7 +113,6 @@ def create_app(config_class=None):
                 'default-src': "'self'",
                 'script-src': "'self' 'unsafe-inline'",
                 'style-src': "'self' 'unsafe-inline'",
-                'img-src': "'self' data: https://images.genius.com https://*.genius.com",
                 'font-src': "'self'",
             },
             referrer_policy='strict-origin-when-cross-origin',

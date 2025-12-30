@@ -1,4 +1,4 @@
-"""Hybrid scraper using Discogs for metadata and Genius for lyrics."""
+"""Hybrid scraper using Discogs for metadata and Musixmatch/lyrics.ovh for lyrics."""
 
 import os
 import re
@@ -10,7 +10,6 @@ from lyricsgenius import Genius, PublicAPI
 
 logger = logging.getLogger(__name__)
 
-GENIUS_TOKEN = os.environ.get('GENIUS_API_TOKEN', '')
 MUSIXMATCH_API_KEY = os.environ.get('MUSIXMATCH_API_KEY', '')
 
 # Import Discogs client functions
@@ -611,16 +610,16 @@ def get_artist_albums_by_id(artist_id, artist_name, page=1, per_page=20):
 
 def scrape_album(album_id, album_name=None, artist_name=None, progress_callback=None):
     """
-    Scrape lyrics for all songs in an album using Discogs + Genius hybrid approach.
+    Scrape lyrics for all songs in an album using Discogs + Musixmatch/lyrics.ovh.
 
     Args:
         album_id: Discogs master/release ID
         album_name: Album name (optional, for metadata)
-        artist_name: Artist name (required for Genius search)
+        artist_name: Artist name (required for lyrics search)
         progress_callback: Optional callback(current, total, title) for progress updates
 
     Returns:
-        List of dicts with: title, artist, album, year, lyrics, url
+        Dict with: songs (list), total_tracks, tracks_with_lyrics
     """
     logger.info(f"=== SCRAPING ALBUM: {album_name} (ID: {album_id}) ===")
 
@@ -667,12 +666,8 @@ def scrape_album(album_id, album_name=None, artist_name=None, progress_callback=
                 if lyrics:
                     source_url = 'lyrics.ovh'
 
-            # Fall back to Genius search + scraping (often blocked from cloud)
-            if not lyrics:
-                genius_url = search_song_genius(artist_name, title)
-                if genius_url:
-                    lyrics = _scrape_lyrics_from_url(genius_url, artist_name=artist_name, song_title=title)
-                    source_url = genius_url
+            # Note: Genius scraping disabled - blocked from cloud IPs (Render, etc.)
+            # Musixmatch + lyrics.ovh provide sufficient coverage
 
             if lyrics:
                 results.append({

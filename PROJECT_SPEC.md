@@ -87,23 +87,28 @@ artist-analyzer/
 #### Analysis Model Tests
 
 **Test:** `Analysis.create()` initializes with correct defaults
+
 - Status should default to 'queued'
 - Created_at should be set to current time
 - Job_id should be nullable initially
 
 **Test:** `Analysis.update_status()` updates status and timestamp
+
 - Calling `update_status('completed')` sets status and completed_at
 - Only completed status updates completed_at timestamp
 
 **Test:** `Analysis.set_results()` stores JSON results
+
 - Results dict converts to JSON and retrieves correctly
 - Complex nested structures preserved
 
 **Test:** `Analysis.from_artist_name()` retrieves or creates
+
 - Returns existing analysis if found
 - Creates new if not found
 
 **Test:** `Analysis.mark_failed()` sets error state
+
 - Status becomes 'failed'
 - Error message is stored
 - No completed_at timestamp set
@@ -111,24 +116,29 @@ artist-analyzer/
 #### Song Model Tests
 
 **Test:** `Song.create()` with all fields
+
 - All fields persist correctly
 - Relationship to Analysis set properly
 
 **Test:** `Song.bulk_create()` inserts multiple
+
 - Batch insert works efficiently
 - All songs linked to correct analysis
 
 **Test:** `Song.get_by_analysis()` retrieves related songs
+
 - Returns only songs for that analysis
 - Ordered correctly
 
 #### Topic Model Tests
 
 **Test:** `Topic.create()` with keywords JSON
+
 - Keywords dict persists and retrieves
 - Weight calculated correctly
 
 **Test:** `Topic.get_top_topics()` returns sorted
+
 - Returns topics sorted by weight descending
 - Limits to top N
 
@@ -143,23 +153,28 @@ artist-analyzer/
 #### Database Connection Tests
 
 **Test:** `db.session.execute()` works
+
 - Can execute raw SQL
 
 **Test:** Database health check
+
 - SELECT 1 returns successfully
 - Connection pool working
 
 **Test:** Rollback on error
+
 - Transaction rolls back on exception
 - Session cleaned up properly
 
 #### Migration Tests
 
 **Test:** Alembic migrations apply cleanly
+
 - Latest schema matches models
 - Can downgrade and upgrade
 
 **Test:** Schema has correct indices
+
 - artist_name is indexed on Analysis
 - job_id is unique on Analysis
 - Created_at is indexed for sorting
@@ -167,9 +182,11 @@ artist-analyzer/
 #### Foreign Key Constraints
 
 **Test:** Song deletion cascades from Analysis
+
 - Deleting Analysis deletes Songs
 
 **Test:** Topic deletion cascades
+
 - Deleting Analysis deletes Topics
 
 **COVERAGE TARGET:** 100% of database operations
@@ -183,42 +200,51 @@ artist-analyzer/
 #### Genius API Integration
 
 **Test:** `scrape_genius()` returns correct structure
+
 - Mock Genius API response
 - Returns list of dicts with: title, artist, album, year, lyrics, url
 
 **Test:** `scrape_genius()` handles missing data
+
 - Missing album defaults to None
 - Missing year defaults to None
 - Returns empty list if artist not found
 
 **Test:** `scrape_genius()` respects rate limits
+
 - Makes max 5 requests per artist (configurable)
 - Stops when no more songs returned
 
 **Test:** `scrape_genius()` extracts lyrics correctly
+
 - Calls `_scrape_song_lyrics()` for each song
 - Lyrics are non-empty strings
 
 **Test:** `_scrape_song_lyrics()` parses HTML
+
 - Mock Genius song page HTML
 - Extracts lyrics from correct div containers
 - Returns empty string on parse error
 
 **Test:** `_scrape_song_lyrics()` handles 404
+
 - Returns empty string for invalid URL
 - Doesn't raise exception
 
 #### Error Handling
 
 **Test:** Network timeout handled
+
 - Retries up to 3 times
 - Raises custom exception after retries exhausted
 
 **Test:** Invalid artist name
+
 - Returns empty list (not error)
 - Logs warning
 
 **MOCKING:**
+
 - Mock requests library with responses library
 - Mock Genius API responses with realistic JSON
 - Mock HTML parsing with BeautifulSoup test fixtures
@@ -234,50 +260,61 @@ artist-analyzer/
 #### Text Cleaning
 
 **Test:** `preprocess_lyrics()` lowercases
+
 - "THE NIGHT" becomes "the night"
 
 **Test:** `preprocess_lyrics()` removes stopwords
+
 - "the", "a", "and", "or" removed
 - Content words preserved
 
 **Test:** `preprocess_lyrics()` tokenizes correctly
+
 - "hello world" becomes ["hello", "world"]
 - Punctuation separated: "don't" → ["don"]
 
 **Test:** `preprocess_lyrics()` stems words
+
 - "dying" → "die"
 - "loved" → "love"
 - "running" → "run"
 
 **Test:** `preprocess_lyrics()` removes short words
+
 - Words < 3 chars removed
 - Keeps meaningful words
 
 #### Corpus Building
 
 **Test:** `preprocess_lyrics()` returns tokens list
+
 - Each song has 'tokens' key with list
 - Each song has 'text' key with rejoined string
 
 **Test:** `preprocess_lyrics()` handles empty lyrics
+
 - Returns empty tokens list
 - Doesn't crash
 
 **Test:** `preprocess_lyrics()` handles special characters
+
 - URLs removed or cleaned
 - Special symbols handled
 
 #### Edge Cases
 
 **Test:** `preprocess_lyrics()` with non-English
+
 - Handles accented characters
 - Doesn't crash on unicode
 
 **Test:** `preprocess_lyrics()` with very short lyrics
+
 - Returns empty tokens (OK)
 - Doesn't crash
 
 **FIXTURES:**
+
 - Sample lyrics strings (short, medium, long)
 - Pre/post tokenization examples
 
@@ -292,46 +329,55 @@ artist-analyzer/
 #### Dictionary & Corpus Creation
 
 **Test:** `run_lda()` creates Dictionary
+
 - Dictionary built from tokenized lyrics
 - Extremes filtered (no_below=2, no_above=0.5)
 
 **Test:** `run_lda()` creates Corpus
+
 - Bag-of-words representation correct
 - Each document is list of (word_id, frequency) tuples
 
 #### LDA Model Training
 
 **Test:** `run_lda()` trains LDA model
+
 - Model has num_topics=7 (or configurable)
 - Passes=10 for training iterations
 - Returns consistent results (random_state=42)
 
 **Test:** `run_lda()` returns topics list
+
 - Topics sorted by weight descending
 - Each topic has: id, name, keywords dict, weight
 
 #### Topic Extraction
 
 **Test:** `run_lda()` extracts keywords from topics
+
 - Keywords extracted from Gensim output
 - Weights normalized correctly
 - Top keywords represent theme
 
 **Test:** `_parse_topic_words()` parses topic string
+
 - Input: `"(0.045*\"word1\" + 0.032*\"word2\")"`
 - Output: `[("word1", 0.045), ("word2", 0.032)]`
 
 #### Edge Cases
 
 **Test:** `run_lda()` with very few documents
+
 - Handles < 10 songs gracefully
 - Reduces num_topics if needed
 
 **Test:** `run_lda()` with duplicate songs
+
 - Handles repeated lyrics
 - Doesn't crash
 
 **FIXTURES:**
+
 - Sample preprocessed lyrics (3, 10, 50 songs)
 - Expected topic structures
 
@@ -346,46 +392,55 @@ artist-analyzer/
 #### Sentiment Scoring
 
 **Test:** `run_sentiment()` scores each song
+
 - Happy lyrics score > 0
 - Sad lyrics score < 0
 - Neutral lyrics score ≈ 0
 
 **Test:** `run_sentiment()` handles edge cases
+
 - Empty lyrics scored as 0
 - Single word lyrics handled
 
 **Test:** Sentiment range
+
 - All scores between -1 and 1
 
 #### Album Aggregation
 
 **Test:** `run_sentiment()` aggregates by album
+
 - Returns by_album list of dicts
 - Each has: album, score (average), song_count
 - Sorted by sentiment score ascending
 
 **Test:** `run_sentiment()` handles missing albums
+
 - Songs with no album listed as "Unknown"
 - All songs appear in results
 
 #### Year Aggregation
 
 **Test:** `run_sentiment()` aggregates by year
+
 - Returns by_year list of dicts
 - Each has: year, score (average), song_count
 - Sorted by year ascending
 
 **Test:** `run_sentiment()` handles missing years
+
 - Songs without year skipped (not in by_year)
 - All other years included
 
 #### Overall Sentiment
 
 **Test:** `run_sentiment()` calculates overall
+
 - Returns overall avg of all songs
 - Is weighted correctly
 
 **FIXTURES:**
+
 - Sample songs with lyrics (happy, sad, neutral)
 - Songs with various albums/years
 
@@ -400,35 +455,43 @@ artist-analyzer/
 #### Word Frequency Analysis
 
 **Test:** `analyze_word_frequency()` returns top words
+
 - Returns list of dicts: {word, frequency}
 - Sorted by frequency descending
 - Top 50 returned
 
 **Test:** `analyze_word_frequency()` counts correctly
+
 - "love" appears 5 times → frequency: 5
 - Order preserved
 
 **Test:** `analyze_word_frequency()` handles duplicates
+
 - Case-insensitive counting
 - All instances counted
 
 #### Metaphor Analysis
 
 **Test:** `analyze_metaphors()` identifies themes
+
 - Returns list of dicts: {metaphor, frequency}
 - Includes: death, love, darkness, pain, loss, eternity
 
 **Test:** `analyze_metaphors()` counts keywords
+
 - "death" + "dying" + "dead" counted for death theme
 - Regex word boundaries respected (`\b`)
 
 **Test:** `analyze_metaphors()` case insensitive
+
 - "DEATH" and "death" both counted
 
 **Test:** `analyze_metaphors()` handles variations
+
 - Stemmed words also match (optional)
 
 **FIXTURES:**
+
 - Sample lyrics with various metaphors
 - Expected frequency counts
 
@@ -443,19 +506,23 @@ artist-analyzer/
 #### Task Creation
 
 **Test:** `analyze_artist_async.delay()` queues task
+
 - Celery accepts task
 - Returns task ID
 
 **Test:** Task has correct name
+
 - Task name is 'pipeline.tasks.analyze_artist_async'
 
 #### Task Execution (with mocked pipeline)
 
 **Test:** `analyze_artist_async()` updates progress
+
 - Calls `update_state()` with progress messages
 - Progress stages: Scraping, Preprocessing, LDA, Sentiment, Final
 
 **Test:** `analyze_artist_async()` calls all pipeline steps
+
 - Calls `scrape_genius()`
 - Calls `preprocess_lyrics()`
 - Calls `run_lda()`
@@ -464,6 +531,7 @@ artist-analyzer/
 - Calls `analyze_metaphors()`
 
 **Test:** `analyze_artist_async()` saves to database
+
 - Creates Analysis record
 - Sets status='completed'
 - Stores results JSON
@@ -472,20 +540,24 @@ artist-analyzer/
 #### Error Handling
 
 **Test:** `analyze_artist_async()` on scraper failure
+
 - Catches exception
 - Sets status='failed'
 - Stores error message
 - Doesn't raise
 
 **Test:** `analyze_artist_async()` on LDA failure
+
 - Similar error handling
 - Preserves which step failed
 
 **Test:** Task retries (optional)
+
 - Retries up to 3 times on failure
 - Exponential backoff
 
 **MOCKING:**
+
 - Mock all pipeline functions
 - Mock database operations
 - Mock Celery update_state()
@@ -501,25 +573,30 @@ artist-analyzer/
 #### POST /api/analyze Endpoint
 
 **Test:** Valid artist submission
+
 - Input: `{artist_name: "The Cure"}`
 - Returns: `{job_id, status: "queued", artist: "The Cure"}`
 - HTTP 202 Accepted
 
 **Test:** Missing artist name
+
 - Returns 400 Bad Request
 - Error message provided
 
 **Test:** Whitespace trimmed
+
 - Input: `"  The Cure  "`
 - Treated as "The Cure"
 
 **Test:** Artist not found handling
+
 - If scraper returns no songs
 - Task marked failed with appropriate message
 
 #### Caching Behavior
 
 **Test:** Cached artist returns immediately
+
 - First request: 202 (queued)
 - Second request (same artist): 200 (completed)
 - Returns cached results
@@ -527,31 +604,38 @@ artist-analyzer/
 #### GET /api/analyze/<job_id> Endpoint
 
 **Test:** Queued status
+
 - Returns: `{job_id, status: "queued", artist}`
 - HTTP 200
 
 **Test:** Processing status
+
 - Returns: `{job_id, status: "processing", progress: "...", artist}`
 - HTTP 200
 
 **Test:** Completed status
+
 - Returns: `{job_id, status: "completed", artist, results: {...}}`
 - HTTP 200
 
 **Test:** Failed status
+
 - Returns: `{job_id, status: "failed", error: "...", artist}`
 - HTTP 400
 
 **Test:** Invalid job_id
+
 - Returns 404 Not Found
 
 #### GET /api/results/<job_id> Endpoint
 
 **Test:** Returns full results when completed
+
 - Returns: `{artist, results, completed_at}`
 - HTTP 200
 
 **Test:** Returns 202 if not completed
+
 - Returns error message
 
 **Test:** Returns 404 if not found
@@ -559,18 +643,22 @@ artist-analyzer/
 #### Error Responses
 
 **Test:** Malformed JSON
+
 - Returns 400 Bad Request
 
 **Test:** Server errors caught
+
 - Returns 500 with error message
 - Exception logged
 
 **MOCKING:**
+
 - Mock AsyncResult from Celery
 - Mock database queries
 - Mock task submission
 
 **FIXTURES:**
+
 - Sample Analysis objects (various states)
 - Sample AsyncResult objects
 
@@ -617,12 +705,14 @@ artist-analyzer/
 #### End-to-End Pipeline (with real models, mocked API)
 
 **Test:** `analyze_artist_async()` full execution
+
 - Mock only Genius API
 - Use real: preprocess, LDA, sentiment, bonus
 - Verify results structure correct
 - Verify database records created
 
 **Test:** Results quality
+
 - LDA topics are coherent
 - Sentiment scores reasonable
 - Word frequency sorted correctly
@@ -633,6 +723,7 @@ artist-analyzer/
 #### API Workflow (Real Flask app, mocked Celery)
 
 **Test:** Submit → Check Status → Get Results
+
 - POST /api/analyze returns job_id
 - GET /api/analyze/<job_id> returns processing
 - (Mock task completion)
@@ -640,10 +731,12 @@ artist-analyzer/
 - GET /api/results/<job_id> returns full results
 
 **Test:** Caching workflow
+
 - Submit same artist twice
 - Second request returns immediately
 
 **Test:** Error workflow
+
 - Submit artist with no songs
 - Task fails
 - Status endpoint shows failed
@@ -676,7 +769,6 @@ markers =
 - `client` (Flask test client)
 - `db_session` (database session)
 - `celery_app` (Celery test app)
-- `mock_genius_api` (mocked responses)
 - `sample_songs` (fixture data)
 - `sample_analysis` (fixture data)
 
@@ -703,32 +795,38 @@ faker==19.0.0
 ## TEST EXECUTION
 
 ### Run all tests:
+
 ```bash
 pytest
 ```
 
 ### Run with coverage:
+
 ```bash
 pytest --cov=. --cov-report=html
 ```
 
 ### Run specific test file:
+
 ```bash
 pytest tests/test_models.py
 ```
 
 ### Run specific test:
+
 ```bash
 pytest tests/test_models.py::TestAnalysis::test_create
 ```
 
 ### Run by marker:
+
 ```bash
 pytest -m unit
 pytest -m integration
 ```
 
 ### Watch mode (optional):
+
 ```bash
 pytest-watch
 ```
@@ -750,6 +848,7 @@ pytest-watch
 ### DATABASE SCHEMA
 
 **analyses:**
+
 - id (PK)
 - artist_name (unique, indexed)
 - job_id (unique, indexed)
@@ -761,6 +860,7 @@ pytest-watch
 - completed_at (datetime, nullable)
 
 **songs:**
+
 - id (PK)
 - analysis_id (FK)
 - artist_name (indexed)
@@ -773,6 +873,7 @@ pytest-watch
 - created_at (datetime)
 
 **topics:**
+
 - id (PK)
 - analysis_id (FK)
 - topic_id (int)
@@ -787,6 +888,7 @@ pytest-watch
 ### POST /api/analyze
 
 **Input:**
+
 ```json
 {
   "artist_name": "The Cure"
@@ -794,6 +896,7 @@ pytest-watch
 ```
 
 **Returns:**
+
 ```json
 {
   "job_id": "abc-123-def",
@@ -809,6 +912,7 @@ pytest-watch
 ### GET /api/analyze/<job_id>
 
 **Returns:**
+
 ```json
 {
   "job_id": "abc-123-def",
@@ -825,6 +929,7 @@ pytest-watch
 ### GET /api/results/<job_id>
 
 **Returns:**
+
 ```json
 {
   "artist": "The Cure",
@@ -845,6 +950,7 @@ pytest-watch
 ### GET /health
 
 **Returns:**
+
 ```json
 {
   "status": "ok",
@@ -955,7 +1061,6 @@ pytest-watch
 FLASK_ENV=production
 DATABASE_URL=postgresql://user:password@host:port/dbname
 REDIS_URL=redis://host:port/0
-GENIUS_API_TOKEN=your_token
 SECRET_KEY=secure_random_key
 PORT=5000
 ```

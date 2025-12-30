@@ -38,21 +38,11 @@ LYRICS_STOPWORDS = {
     'ooh', 'whoa', 'hmm', 'mmm', 'ya', 'yo', 'wanna',
     'gonna', 'gotta', 'aint', "i'm", "you're", "it's",
     'verse', 'chorus', 'bridge', 'intro', 'outro',
-    # Genius page artifacts
-    'contributor', 'contributors', 'lyric', 'lyrics',
-    'embed', 'translation', 'translations', 'instrumental',
     # Common genre terms (not meaningful for analysis)
     'metal', 'rock', 'punk', 'pop', 'jazz', 'blues',
     'rap', 'hip', 'hop', 'country', 'folk', 'indie',
 }
 STOP_WORDS.update(LYRICS_STOPWORDS)
-
-# Stemmed versions of stopwords (checked after stemming)
-STEMMED_STOPWORDS = {
-    'contributor', 'lyric', 'embed', 'translat', 'instrument',
-    'metal', 'rock', 'punk', 'pop', 'jazz', 'blue',
-    'rap', 'hip', 'hop', 'countri', 'folk', 'indi',
-}
 
 
 def preprocess_lyrics(songs: List[Dict]) -> List[Dict]:
@@ -187,10 +177,6 @@ def _tokenize_and_clean(text: str) -> tuple:
 
         # Skip if stemmed word is too short
         if len(stemmed) < 3:
-            continue
-
-        # Skip stemmed stopwords (Genius artifacts, genres, etc.)
-        if stemmed in STEMMED_STOPWORDS:
             continue
 
         # Track original word for this stem

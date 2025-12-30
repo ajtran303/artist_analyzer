@@ -23,7 +23,6 @@ A web application that analyzes song lyrics to discover hidden themes, track sen
 - **Discogs API** - Artist and album metadata, tracklists
 - **Musixmatch API** - Primary lyrics source (optional, best coverage)
 - **lyrics.ovh** - Free lyrics API fallback
-- **Genius** - Song search and lyrics scraping fallback
 
 ### Infrastructure
 - **Docker Compose** - Container orchestration
@@ -34,8 +33,7 @@ A web application that analyzes song lyrics to discover hidden themes, track sen
 
 - Docker and Docker Compose
 - Discogs API token ([get one here](https://www.discogs.com/settings/developers))
-- Musixmatch API key (optional, [get one here](https://developer.musixmatch.com/))
-- Genius API token ([get one here](https://genius.com/api-clients))
+- Musixmatch API key (optional but recommended, [get one here](https://developer.musixmatch.com/))
 
 ## Quick Start
 
@@ -52,10 +50,9 @@ A web application that analyzes song lyrics to discover hidden themes, track sen
 
 3. **Configure environment variables**
    ```env
-   # API Keys (Musixmatch optional but recommended)
+   # API Keys
    DISCOGS_API_TOKEN=your_discogs_token
-   MUSIXMATCH_API_KEY=your_musixmatch_key
-   GENIUS_API_TOKEN=your_genius_token
+   MUSIXMATCH_API_KEY=your_musixmatch_key  # Optional but recommended
 
    # Security
    SECRET_KEY=your_secret_key_here
@@ -94,9 +91,9 @@ A web application that analyzes song lyrics to discover hidden themes, track sen
    │   API    │     │   APIs     │     │ Pipeline │
    └──────────┘     └────────────┘     └──────────┘
                            │
-              ┌────────────┼────────────┐
-              ▼            ▼            ▼
-         Musixmatch   lyrics.ovh    Genius
+                  ┌────────┴────────┐
+                  ▼                 ▼
+             Musixmatch        lyrics.ovh
 ```
 
 ## Analysis Pipeline
@@ -106,7 +103,6 @@ A web application that analyzes song lyrics to discover hidden themes, track sen
 3. **Fetch Lyrics**: Celery worker fetches lyrics using multiple sources:
    - Musixmatch API (best coverage, if configured)
    - lyrics.ovh API (free fallback)
-   - Genius scraping (last resort)
 4. **Preprocess**: Lyrics are tokenized, stemmed, and cleaned
 5. **Analyze**:
    - LDA discovers latent topics
@@ -174,8 +170,7 @@ python -c "import nltk; nltk.download('punkt'); nltk.download('stopwords'); nltk
 # Set environment variables
 export FLASK_ENV=development
 export DISCOGS_API_TOKEN=your_token
-export MUSIXMATCH_API_KEY=your_key
-export GENIUS_API_TOKEN=your_token
+export MUSIXMATCH_API_KEY=your_key  # Optional but recommended
 
 # Run Flask
 flask run
@@ -209,8 +204,7 @@ FLASK_ENV=production
 DATABASE_URL=postgresql://...
 REDIS_URL=redis://...
 DISCOGS_API_TOKEN=...
-MUSIXMATCH_API_KEY=...
-GENIUS_API_TOKEN=...
+MUSIXMATCH_API_KEY=...  # Optional but recommended
 SECRET_KEY=...
 CORS_ORIGINS=https://yourdomain.com
 FORCE_HTTPS=true
@@ -219,9 +213,8 @@ FORCE_HTTPS=true
 ## Limitations
 
 - English lyrics only (sentiment analysis optimized for English)
-- Lyrics availability depends on coverage across Musixmatch, lyrics.ovh, and Genius
+- Lyrics availability depends on coverage across Musixmatch and lyrics.ovh
 - Rate limits apply to external APIs
-- Some cloud providers may be blocked by Genius scraping
 
 ## License
 

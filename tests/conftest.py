@@ -92,7 +92,7 @@ def sample_songs():
             'album': 'Test Album',
             'year': 2020,
             'lyrics': 'This is a test song with happy lyrics about love and sunshine.',
-            'url': 'https://genius.com/test1'
+            'url': 'musixmatch'
         },
         {
             'title': 'Test Song 2',
@@ -100,7 +100,7 @@ def sample_songs():
             'album': 'Test Album',
             'year': 2021,
             'lyrics': 'Dark night brings pain and sorrow, death awaits tomorrow.',
-            'url': 'https://genius.com/test2'
+            'url': 'musixmatch'
         },
         {
             'title': 'Test Song 3',
@@ -108,7 +108,7 @@ def sample_songs():
             'album': None,
             'year': None,
             'lyrics': 'Running through the fields of green, dreaming of what could have been.',
-            'url': 'https://genius.com/test3'
+            'url': 'lyrics.ovh'
         }
     ]
 
@@ -136,73 +136,6 @@ def preprocessed_songs():
             'text': 'run field dream'
         }
     ]
-
-
-@pytest.fixture
-def mock_genius_api():
-    """Mock Genius API responses."""
-    with patch('pipeline.scraper.requests') as mock_requests:
-        # Mock search response
-        search_response = MagicMock()
-        search_response.status_code = 200
-        search_response.json.return_value = {
-            'response': {
-                'hits': [
-                    {
-                        'result': {
-                            'title': 'Test Song',
-                            'primary_artist': {
-                                'id': 123,
-                                'name': 'Test Artist'
-                            }
-                        }
-                    }
-                ]
-            }
-        }
-
-        # Mock artist songs response
-        songs_response = MagicMock()
-        songs_response.status_code = 200
-        songs_response.json.return_value = {
-            'response': {
-                'songs': [
-                    {
-                        'title': 'Song 1',
-                        'url': 'https://genius.com/song1',
-                        'primary_artist': {'name': 'Test Artist'},
-                        'album': {'name': 'Test Album'},
-                        'release_date_for_display': '2020'
-                    }
-                ]
-            }
-        }
-
-        # Mock lyrics page response
-        lyrics_response = MagicMock()
-        lyrics_response.status_code = 200
-        lyrics_response.text = '''
-            <html>
-            <body>
-            <div data-lyrics-container="true">
-            Test lyrics content here
-            Love and pain mixed together
-            </div>
-            </body>
-            </html>
-        '''
-
-        def mock_get(*args, **kwargs):
-            url = args[0] if args else kwargs.get('url', '')
-            if 'search' in str(url):
-                return search_response
-            elif 'songs' in str(url):
-                return songs_response
-            else:
-                return lyrics_response
-
-        mock_requests.get.side_effect = mock_get
-        yield mock_requests
 
 
 @pytest.fixture
