@@ -91,33 +91,6 @@ content %}
     </div>
   </section>
 
-  <!-- Theme Overlap -->
-  <section class="compare-card">
-    <button class="accordion-header" data-section="themes">
-      <h2>Theme Overlap</h2>
-      <span class="accordion-icon">+</span>
-    </button>
-    <div class="accordion-content collapsed" id="themes-section">
-      <p class="section-description">
-        Top words that appear in each album's lyrics.
-      </p>
-      <div class="theme-overlap">
-        <div class="theme-group">
-          <h4 class="album-a-color">Only in Album A</h4>
-          <div id="themes-only-a" class="theme-tags"></div>
-        </div>
-        <div class="theme-group shared">
-          <h4>Shared</h4>
-          <div id="themes-shared" class="theme-tags"></div>
-        </div>
-        <div class="theme-group">
-          <h4 class="album-b-color">Only in Album B</h4>
-          <div id="themes-only-b" class="theme-tags"></div>
-        </div>
-      </div>
-    </div>
-  </section>
-
   <!-- Discovered Themes in Common (LDA) -->
   <section class="compare-card">
     <button class="accordion-header" data-section="discovered">
@@ -167,6 +140,33 @@ content %}
             <span id="songs-a" class="album-a-color">-</span>
             <span id="songs-b" class="album-b-color">-</span>
           </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Theme Overlap (Top Words) -->
+  <section class="compare-card">
+    <button class="accordion-header" data-section="themes">
+      <h2>Top Words Overlap</h2>
+      <span class="accordion-icon">+</span>
+    </button>
+    <div class="accordion-content collapsed" id="themes-section">
+      <p class="section-description">
+        Top words that appear in each album's lyrics.
+      </p>
+      <div class="theme-overlap">
+        <div class="theme-group">
+          <h4 class="album-a-color">Only in Album A</h4>
+          <div id="themes-only-a" class="theme-tags"></div>
+        </div>
+        <div class="theme-group shared">
+          <h4>Shared</h4>
+          <div id="themes-shared" class="theme-tags"></div>
+        </div>
+        <div class="theme-group">
+          <h4 class="album-b-color">Only in Album B</h4>
+          <div id="themes-only-b" class="theme-tags"></div>
         </div>
       </div>
     </div>
