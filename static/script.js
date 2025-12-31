@@ -642,6 +642,7 @@ document.addEventListener("DOMContentLoaded", function () {
   function showAnalysisProgress(jobId) {
     // Hide other sections
     albumSection.classList.add("hidden");
+    albumSearchResultsSection.classList.add("hidden");
     compareBanner.classList.add("hidden");
 
     // Show analysis section
