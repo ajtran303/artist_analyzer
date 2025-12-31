@@ -209,6 +209,9 @@ document.addEventListener("DOMContentLoaded", function () {
     // Render sentiment
     renderSentiment(results.sentiment || {});
 
+    // Render most emotional passage
+    renderEmotionalPassage(results.stats?.most_emotional_passage);
+
     // Render word frequency
     renderWordFrequency(results.word_frequency || []);
 
@@ -324,6 +327,41 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Set up sort toggle buttons
     setupSortToggle();
+  }
+
+  function renderEmotionalPassage(passage) {
+    const section = document.getElementById("emotional-passage-section");
+    const songTitleEl = document.getElementById("passage-song-title");
+    const badgeEl = document.getElementById("passage-sentiment-badge");
+    const textEl = document.getElementById("passage-text");
+
+    if (!passage || !passage.passage) {
+      section.classList.add("hidden");
+      return;
+    }
+
+    section.classList.remove("hidden");
+
+    // Set song title
+    songTitleEl.textContent = `From "${passage.song_title}"`;
+
+    // Set sentiment badge
+    const score = passage.score || 0;
+    const isPositive = passage.sentiment_type === "positive";
+    badgeEl.textContent = `${isPositive ? "+" : ""}${score.toFixed(2)} ${getSentimentLabel(score)}`;
+    badgeEl.className = `passage-sentiment-badge ${isPositive ? "positive" : "negative"}`;
+
+    // Set passage text with line breaks preserved
+    textEl.innerHTML = passage.passage
+      .split("\n")
+      .map((line) => `<span class="passage-line">${escapeHtml(line)}</span>`)
+      .join("<br>");
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
   }
 
   function setupSortToggle() {

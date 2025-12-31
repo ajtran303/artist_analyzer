@@ -158,3 +158,87 @@ def get_sentiment_timeline(songs: List[Dict]) -> List[Dict]:
     """
     by_year = _aggregate_by_year(songs)
     return [{'year': item['year'], 'score': item['score']} for item in by_year]
+
+
+def find_most_emotional_passage(songs: List[Dict]) -> Dict:
+    """
+    Find the most emotionally intense passage across all songs.
+
+    Analyzes lyrics by splitting into passages (verses) and finding
+    the one with the highest absolute sentiment score.
+
+    Args:
+        songs: List of song dicts with 'lyrics' and 'title' keys
+
+    Returns:
+        Dict with: song_title, passage, score, sentiment_type ('positive'/'negative')
+        Returns None if no valid passages found.
+    """
+    if not songs:
+        return None
+
+    most_emotional = None
+    highest_intensity = 0.0
+
+    for song in songs:
+        lyrics = song.get('lyrics', '')
+        title = song.get('title', 'Unknown')
+
+        if not lyrics or not lyrics.strip():
+            continue
+
+        # Split lyrics into passages (by double newlines for verses)
+        passages = _split_into_passages(lyrics)
+
+        for passage in passages:
+            if len(passage.strip()) < 20:  # Skip very short passages
+                continue
+
+            score = _analyze_sentiment(passage)
+            intensity = abs(score)
+
+            if intensity > highest_intensity:
+                highest_intensity = intensity
+                most_emotional = {
+                    'song_title': title,
+                    'passage': passage.strip(),
+                    'score': score,
+                    'sentiment_type': 'positive' if score >= 0 else 'negative'
+                }
+
+    return most_emotional
+
+
+def _split_into_passages(lyrics: str) -> List[str]:
+    """
+    Split lyrics into passages/verses.
+
+    First tries to split by double newlines (verse breaks).
+    If that yields too few passages, falls back to grouping lines.
+
+    Args:
+        lyrics: Raw lyrics text
+
+    Returns:
+        List of passage strings
+    """
+    # Try splitting by double newlines (verse separators)
+    passages = [p.strip() for p in lyrics.split('\n\n') if p.strip()]
+
+    # If we got reasonable passages, return them
+    if len(passages) >= 2:
+        return passages
+
+    # Fallback: split by single newlines and group into chunks of 4 lines
+    lines = [line.strip() for line in lyrics.split('\n') if line.strip()]
+
+    if len(lines) < 4:
+        return [lyrics]  # Return whole lyrics as single passage
+
+    passages = []
+    for i in range(0, len(lines), 4):
+        chunk = '\n'.join(lines[i:i+4])
+        if chunk.strip():
+            passages.append(chunk)
+
+    return passages if passages else [lyrics]
