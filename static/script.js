@@ -23,7 +23,9 @@ document.addEventListener("DOMContentLoaded", function () {
   const albumSearchBtnLoading = albumSearchBtn.querySelector(".btn-loading");
 
   // Album search results elements
-  const albumSearchResultsSection = document.getElementById("album-search-results");
+  const albumSearchResultsSection = document.getElementById(
+    "album-search-results"
+  );
   const albumSearchQueryDisplay = document.getElementById("album-search-query");
   const albumSearchGrid = document.getElementById("album-search-grid");
 
@@ -45,8 +47,12 @@ document.addEventListener("DOMContentLoaded", function () {
   // Analysis progress elements (for compare mode)
   const analysisSection = document.getElementById("analysis-section");
   const analysisStatusText = document.getElementById("analysis-status-text");
-  const analysisProgressFill = document.getElementById("analysis-progress-fill");
-  const analysisProgressPercent = document.getElementById("analysis-progress-percent");
+  const analysisProgressFill = document.getElementById(
+    "analysis-progress-fill"
+  );
+  const analysisProgressPercent = document.getElementById(
+    "analysis-progress-percent"
+  );
   const analysisFunFact = document.getElementById("analysis-fun-fact");
 
   // State
@@ -66,8 +72,8 @@ document.addEventListener("DOMContentLoaded", function () {
   let albumIndex = 0; // For playlist numbering
 
   // Album search state
-  let currentSearchMode = 'artist';
-  let albumSearchQuery = '';
+  let currentSearchMode = "artist";
+  let albumSearchQuery = "";
   let albumSearchPage = 1;
   let albumSearchHasMore = false;
   let albumSearchIsLoading = false;
@@ -82,7 +88,7 @@ document.addEventListener("DOMContentLoaded", function () {
   initCompareMode();
 
   // Tab switching
-  tabBtns.forEach(btn => {
+  tabBtns.forEach((btn) => {
     btn.addEventListener("click", () => {
       const targetTab = btn.dataset.tab;
       switchTab(targetTab);
@@ -93,12 +99,12 @@ document.addEventListener("DOMContentLoaded", function () {
     currentSearchMode = tab;
 
     // Update tab buttons
-    tabBtns.forEach(btn => {
+    tabBtns.forEach((btn) => {
       btn.classList.toggle("active", btn.dataset.tab === tab);
     });
 
     // Update tab panels
-    tabPanels.forEach(panel => {
+    tabPanels.forEach((panel) => {
       panel.classList.toggle("active", panel.id === `${tab}-tab`);
     });
 
@@ -176,7 +182,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
     try {
       const response = await fetch(
-        `/api/albums/search?q=${encodeURIComponent(albumSearchQuery)}&page=${albumSearchPage}`
+        `/api/albums/search?q=${encodeURIComponent(
+          albumSearchQuery
+        )}&page=${albumSearchPage}`
       );
       const data = await response.json();
 
@@ -261,10 +269,12 @@ document.addEventListener("DOMContentLoaded", function () {
   function selectAlbumFromSearch(item, album) {
     if (isAnalyzing) return;
 
-    document.querySelectorAll("#album-search-grid .album-item").forEach((el) => {
-      el.classList.remove("selected");
-      el.querySelector(".album-action").classList.add("hidden");
-    });
+    document
+      .querySelectorAll("#album-search-grid .album-item")
+      .forEach((el) => {
+        el.classList.remove("selected");
+        el.querySelector(".album-action").classList.add("hidden");
+      });
 
     item.classList.add("selected");
     item.querySelector(".album-action").classList.remove("hidden");
@@ -367,7 +377,6 @@ document.addEventListener("DOMContentLoaded", function () {
     "Hip-hop lyrics contain the largest vocabulary of any music genre.",
     "The Beatles wrote over 300 songs, making them one of the most analyzed artists in music history.",
     "Song lyrics have become more repetitive over the past 50 years, according to research.",
-    "Eminem holds the record for most words in a hit single with 'Rap God' at 1,560 words.",
     "Country music lyrics mention trucks, beer, and rain more than any other genre.",
     "Taylor Swift's lyrics have been studied by linguists for their narrative complexity.",
     "The word 'baby' appears in over 25% of all Billboard Hot 100 songs.",
@@ -383,6 +392,21 @@ document.addEventListener("DOMContentLoaded", function () {
     "Songs in minor keys are perceived as sadder regardless of lyrical content.",
     "Finnish has produced more metal bands per capita than any other country.",
     "Radiohead's lyrics are considered some of the most linguistically complex in rock music.",
+    "LDA (Latent Dirichlet Allocation) was invented in 2003 by David Blei, Andrew Ng, and Michael Jordan.",
+    "The average pop song contains about 300-400 words.",
+    "Sentiment analysis can detect emotions with up to 85% accuracy on well-written text.",
+    "Topic modeling can reveal hidden themes that even the songwriter might not have consciously intended.",
+    "The longest song title ever is over 300 characters long!",
+    "Natural Language Processing has roots dating back to the 1950s.",
+    "The most covered song of all time is 'Yesterday' by The Beatles.",
+    "Lyrics analysis can predict song popularity with surprising accuracy.",
+    "The human brain processes music in the same areas that process language.",
+    "Studies show sad songs are streamed more often during winter months.",
+    "Beyoncé's 'Lemonade' album has been analyzed in over 100 academic papers.",
+    "The word 'yeah' is one of the most common filler words in English lyrics.",
+    "AI can now generate lyrics that are indistinguishable from human-written ones 40% of the time.",
+    "Researchers found that lyrics mentioning specific places boost local tourism.",
+    "The longest officially released song is over 13 hours long.",
   ];
 
   // Search form submission
@@ -681,7 +705,12 @@ document.addEventListener("DOMContentLoaded", function () {
       } else {
         // Still processing
         analysisStatusText.textContent = data.progress || "Processing...";
-        updateAnalysisProgress(data.stage || 0, data.total_stages || 6, data.sub_current, data.sub_total);
+        updateAnalysisProgress(
+          data.stage || 0,
+          data.total_stages || 6,
+          data.sub_current,
+          data.sub_total
+        );
         updateAnalysisSteps(data.stage || 0);
       }
     } catch (error) {
@@ -693,9 +722,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const stageProgress = (stage - 1) / totalStages;
     let subProgress = 0;
     if (subCurrent && subTotal && subTotal > 0) {
-      subProgress = (subCurrent / subTotal) / totalStages;
+      subProgress = subCurrent / subTotal / totalStages;
     }
-    const percent = Math.round(Math.max(0, (stageProgress + subProgress)) * 100);
+    const percent = Math.round(Math.max(0, stageProgress + subProgress) * 100);
     analysisProgressFill.style.width = `${percent}%`;
     analysisProgressPercent.textContent = `${percent}%`;
   }
