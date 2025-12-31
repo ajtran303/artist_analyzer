@@ -59,7 +59,17 @@ def _extract_year_from_date(date_str):
 
 def _fetch_lyrics_musixmatch(artist_name, song_title, max_retries=2):
     """Fetch lyrics from Musixmatch API with retry logic."""
+    from pipeline.api_metrics import get_metrics
+
     if not MUSIXMATCH_API_KEY:
+        return ''
+
+    metrics = get_metrics()
+
+    # Check rate limit before making request
+    allowed, wait_time = metrics.check_limit('musixmatch')
+    if not allowed:
+        logger.warning(f"Musixmatch rate limit reached ({wait_time}s until reset), skipping")
         return ''
 
     for attempt in range(max_retries):
@@ -73,6 +83,9 @@ def _fetch_lyrics_musixmatch(artist_name, song_title, max_retries=2):
                 },
                 timeout=15
             )
+
+            # Track the API call
+            metrics.track_call('musixmatch', success=response.status_code == 200)
 
             if response.status_code == 200:
                 data = response.json()
@@ -92,6 +105,7 @@ def _fetch_lyrics_musixmatch(artist_name, song_title, max_retries=2):
                 return ''
 
         except Exception as e:
+            metrics.track_call('musixmatch', success=False)
             logger.debug(f"Musixmatch attempt {attempt + 1} failed for {artist_name} - {song_title}: {e}")
             if attempt < max_retries - 1:
                 time.sleep(1)  # Wait 1 second before retry
@@ -101,6 +115,10 @@ def _fetch_lyrics_musixmatch(artist_name, song_title, max_retries=2):
 
 def _fetch_lyrics_lyricsovh(artist_name, song_title):
     """Fetch lyrics from lyrics.ovh API (free, no scraping needed)."""
+    from pipeline.api_metrics import get_metrics
+
+    metrics = get_metrics()
+
     try:
         # Clean artist and title for URL
         artist = artist_name.strip()
@@ -111,6 +129,9 @@ def _fetch_lyrics_lyricsovh(artist_name, song_title):
             timeout=15
         )
 
+        # Track the API call
+        metrics.track_call('lyricsovh', success=response.status_code == 200)
+
         if response.status_code == 200:
             data = response.json()
             lyrics = data.get('lyrics', '')
@@ -120,6 +141,7 @@ def _fetch_lyrics_lyricsovh(artist_name, song_title):
 
         return ''
     except Exception as e:
+        metrics.track_call('lyricsovh', success=False)
         logger.debug(f"lyrics.ovh failed for {artist_name} - {song_title}: {e}")
         return ''
 

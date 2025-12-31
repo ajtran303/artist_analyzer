@@ -510,3 +510,16 @@ def health_check():
         'status': 'ok' if db_healthy else 'degraded',
         'database': 'connected' if db_healthy else 'disconnected'
     }), 200 if db_healthy else 503
+
+
+@api_bp.route('/metrics', methods=['GET'])
+def get_metrics():
+    """
+    Get current API rate limit usage.
+
+    Returns:
+        {discogs: {...}, musixmatch: {...}, lyricsovh: {...}}
+    """
+    from pipeline.api_metrics import get_metrics
+    metrics = get_metrics()
+    return jsonify(metrics.get_all_usage()), 200

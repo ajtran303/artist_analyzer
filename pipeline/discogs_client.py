@@ -37,6 +37,30 @@ class DiscogsError(Exception):
     pass
 
 
+def _check_rate_limit():
+    """
+    Check Discogs rate limit before making a request.
+    Waits if limit is reached, raises DiscogsError if wait is too long.
+    """
+    from pipeline.api_metrics import get_metrics
+    metrics = get_metrics()
+
+    allowed, wait_time = metrics.check_limit('discogs')
+    if not allowed:
+        if wait_time and wait_time <= 60:
+            logger.info(f"Discogs rate limit reached, waiting {wait_time}s")
+            time.sleep(wait_time)
+        else:
+            raise DiscogsError(f"Discogs rate limit exceeded, reset in {wait_time}s")
+
+
+def _track_discogs_call(success=True):
+    """Track a Discogs API call."""
+    from pipeline.api_metrics import get_metrics
+    metrics = get_metrics()
+    metrics.track_call('discogs', success=success)
+
+
 def _get_client():
     """Get authenticated Discogs client."""
     if not DISCOGS_TOKEN:
@@ -58,8 +82,10 @@ def search_artist(artist_name):
         Tuple of (artist_id, artist_name) or (None, None) if not found
     """
     try:
+        _check_rate_limit()
         d = _get_client()
         results = d.search(artist_name, type='artist')
+        _track_discogs_call(success=True)
 
         if results and len(results) > 0:
             artist = results[0]
@@ -71,7 +97,10 @@ def search_artist(artist_name):
         logger.warning(f"Artist not found on Discogs: {artist_name}")
         return None, None
 
+    except DiscogsError:
+        raise
     except Exception as e:
+        _track_discogs_call(success=False)
         logger.error(f"Error searching Discogs for artist: {e}")
         return None, None
 
@@ -103,6 +132,7 @@ def get_artist_albums(artist_id, page=1, per_page=20):
         # Keep fetching until we have enough albums or run out of pages
         pages_fetched = 0
         while len(albums) < per_page and pages_fetched < max_pages_to_fetch:
+            _check_rate_limit()
             response = requests.get(
                 f'https://api.discogs.com/artists/{artist_id}/releases',
                 params={
@@ -114,6 +144,7 @@ def get_artist_albums(artist_id, page=1, per_page=20):
                 headers=headers,
                 timeout=30
             )
+            _track_discogs_call(success=response.ok)
             response.raise_for_status()
             data = response.json()
 
@@ -156,6 +187,8 @@ def get_artist_albums(artist_id, page=1, per_page=20):
             'page': page
         }
 
+    except DiscogsError:
+        raise
     except Exception as e:
         logger.error(f"Error fetching artist albums from Discogs: {e}")
         return {'albums': [], 'has_more': False, 'total': 0, 'page': page}
@@ -173,14 +206,18 @@ def get_release_tracks(release_id, is_master=True):
         List of track dicts with position, title, duration
     """
     try:
+        _check_rate_limit()
         d = _get_client()
 
         if is_master:
             # Get the main release for this master
             master = d.master(release_id)
+            _track_discogs_call(success=True)
             release = master.main_release
+            _track_discogs_call(success=True)  # main_release is another API call
         else:
             release = d.release(release_id)
+            _track_discogs_call(success=True)
 
         tracks = []
         for track in release.tracklist:
@@ -198,7 +235,10 @@ def get_release_tracks(release_id, is_master=True):
         logger.info(f"Found {len(tracks)} tracks for release ID {release_id}")
         return tracks
 
+    except DiscogsError:
+        raise
     except Exception as e:
+        _track_discogs_call(success=False)
         logger.error(f"Error fetching release tracks from Discogs: {e}")
         return []
 
@@ -215,10 +255,12 @@ def get_release_info(release_id, is_master=True):
         Dict with title, year, artist, genres, cover_art_url
     """
     try:
+        _check_rate_limit()
         d = _get_client()
 
         if is_master:
             master = d.master(release_id)
+            _track_discogs_call(success=True)
             # Get artist from main_release since master might not have artists directly
             artist_name = ''
             if hasattr(master, 'artists') and master.artists:
@@ -236,6 +278,7 @@ def get_release_info(release_id, is_master=True):
             }
         else:
             release = d.release(release_id)
+            _track_discogs_call(success=True)
             artist_name = ''
             if hasattr(release, 'artists') and release.artists:
                 artist_name = release.artists[0].name
@@ -247,7 +290,10 @@ def get_release_info(release_id, is_master=True):
                 'cover_art_url': release.images[0]['uri'] if hasattr(release, 'images') and release.images else ''
             }
 
+    except DiscogsError:
+        raise
     except Exception as e:
+        _track_discogs_call(success=False)
         logger.error(f"Error fetching release info from Discogs: {e}")
         return None
 
@@ -265,8 +311,10 @@ def search_albums(query, page=1, per_page=20):
         Dict with albums list, has_more flag, page, and next_page
     """
     try:
+        _check_rate_limit()
         d = _get_client()
         results = d.search(query, type='master', per_page=per_page, page=page)
+        _track_discogs_call(success=True)
 
         albums = []
         for master in results:
@@ -340,7 +388,10 @@ def search_albums(query, page=1, per_page=20):
             'next_page': current_page + 1 if has_more else None
         }
 
+    except DiscogsError:
+        raise
     except Exception as e:
+        _track_discogs_call(success=False)
         logger.error(f"Error searching albums on Discogs: {e}")
         return {
             'albums': [],
