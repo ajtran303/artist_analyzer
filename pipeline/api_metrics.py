@@ -27,7 +27,12 @@ class APIMetrics:
         if self._redis is None:
             try:
                 import redis
-                self._redis = redis.from_url(self._redis_url, decode_responses=True)
+                self._redis = redis.from_url(
+                    self._redis_url,
+                    decode_responses=True,
+                    socket_timeout=2,  # 2 second timeout for operations
+                    socket_connect_timeout=2  # 2 second timeout for connection
+                )
                 # Test connection
                 self._redis.ping()
             except Exception as e:

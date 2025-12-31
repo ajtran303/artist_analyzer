@@ -62,13 +62,17 @@ def _track_discogs_call(success=True):
 
 
 def _get_client():
-    """Get authenticated Discogs client."""
+    """Get authenticated Discogs client with timeouts configured."""
     if not DISCOGS_TOKEN:
         raise DiscogsError("DISCOGS_API_TOKEN environment variable not set")
-    return discogs_client.Client(
+    client = discogs_client.Client(
         'ArtistAnalyzer/1.0',
         user_token=DISCOGS_TOKEN
     )
+    # Set timeouts to prevent hanging requests
+    client._fetcher.connect_timeout = 10
+    client._fetcher.read_timeout = 30
+    return client
 
 
 def search_artist(artist_name):
