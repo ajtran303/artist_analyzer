@@ -128,6 +128,45 @@ class TestCachingBehavior:
         assert data['status'] == 'completed'
         assert data.get('cached') is True
 
+    def test_force_refresh_bypasses_cache(self, client, db_session):
+        """Force refresh deletes cached analysis and starts fresh."""
+        from datetime import datetime
+        from models import Analysis
+
+        # Create a completed analysis
+        analysis = Analysis(
+            artist_name='Force Refresh Artist',
+            album_id=88888,
+            album_name='Force Refresh Album',
+            job_id='force-refresh-old-job',
+            status='completed',
+            results={'topics': [], 'sentiment': {'overall': 0}},
+            completed_at=datetime.utcnow()
+        )
+        db_session.add(analysis)
+        db_session.commit()
+        old_job_id = analysis.job_id
+
+        with patch('pipeline.tasks.analyze_album_async') as mock_task:
+            mock_task.delay.return_value = MagicMock(id='new-task-id')
+
+            response = client.post(
+                '/api/analyze',
+                data=json.dumps({
+                    'artist_name': 'Force Refresh Artist',
+                    'album_id': 88888,
+                    'album_name': 'Force Refresh Album',
+                    'force': True
+                }),
+                content_type='application/json'
+            )
+
+            assert response.status_code == 202
+            data = json.loads(response.data)
+            # Should have a new job_id, not the old cached one
+            assert data['job_id'] != old_job_id
+            assert data.get('cached') is not True
+
     def test_processing_album_returns_202(self, client, db_session):
         """Processing analysis returns 202."""
         from models import Analysis
@@ -432,3 +471,98 @@ class TestCompareAlbums:
         data = json.loads(response.data)
         assert 'shared_topics' in data
         assert isinstance(data['shared_topics'], list)
+
+
+@pytest.mark.unit
+class TestSearchAlbums:
+    """Tests for GET /api/albums/search endpoint."""
+
+    @patch('pipeline.scraper.search_albums_by_title')
+    def test_returns_album_results(self, mock_search, client):
+        """Returns album search results."""
+        mock_search.return_value = {
+            'albums': [
+                {'id': 12345, 'name': 'Disintegration', 'artist': 'The Cure', 'year': 1989, 'type': 'master'},
+                {'id': 67890, 'name': 'Disintegration', 'artist': 'Monolord', 'year': 2014, 'type': 'master'}
+            ],
+            'has_more': False,
+            'page': 1,
+            'next_page': None
+        }
+
+        response = client.get('/api/albums/search?q=Disintegration')
+
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert len(data['albums']) == 2
+        assert data['albums'][0]['name'] == 'Disintegration'
+        assert data['albums'][0]['artist'] == 'The Cure'
+
+    def test_missing_query_returns_400(self, client):
+        """Missing query parameter returns 400."""
+        response = client.get('/api/albums/search')
+
+        assert response.status_code == 400
+        data = json.loads(response.data)
+        assert 'error' in data
+
+    def test_empty_query_returns_400(self, client):
+        """Empty query parameter returns 400."""
+        response = client.get('/api/albums/search?q=')
+
+        assert response.status_code == 400
+        data = json.loads(response.data)
+        assert 'error' in data
+
+    def test_whitespace_query_returns_400(self, client):
+        """Whitespace-only query parameter returns 400."""
+        response = client.get('/api/albums/search?q=   ')
+
+        assert response.status_code == 400
+        data = json.loads(response.data)
+        assert 'error' in data
+
+    @patch('pipeline.scraper.search_albums_by_title')
+    def test_returns_empty_albums_list(self, mock_search, client):
+        """Returns empty albums list when no results found."""
+        mock_search.return_value = {
+            'albums': [],
+            'has_more': False,
+            'page': 1,
+            'next_page': None
+        }
+
+        response = client.get('/api/albums/search?q=NonexistentAlbumXYZ')
+
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data['albums'] == []
+
+    @patch('pipeline.scraper.search_albums_by_title')
+    def test_handles_pagination(self, mock_search, client):
+        """Handles pagination parameters."""
+        mock_search.return_value = {
+            'albums': [{'id': 1, 'name': 'Test', 'artist': 'Artist', 'year': 2020, 'type': 'master'}],
+            'has_more': True,
+            'page': 2,
+            'next_page': 3
+        }
+
+        response = client.get('/api/albums/search?q=Test&page=2')
+
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        mock_search.assert_called_once_with('Test', page=2)
+        assert data['has_more'] is True
+        assert data['next_page'] == 3
+
+    @patch('pipeline.scraper.search_albums_by_title')
+    def test_returns_500_on_error(self, mock_search, client):
+        """Returns 500 when search fails."""
+        mock_search.return_value = None
+
+        response = client.get('/api/albums/search?q=Test')
+
+        assert response.status_code == 500
+        data = json.loads(response.data)
+        assert 'error' in data

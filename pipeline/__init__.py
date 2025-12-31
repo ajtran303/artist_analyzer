@@ -1,4 +1,4 @@
-"""Pipeline modules for artist lyrical analysis."""
+"""Pipeline modules for lyrical analysis."""
 
 from .preprocessor import preprocess_lyrics
 from .lda_analyzer import run_lda

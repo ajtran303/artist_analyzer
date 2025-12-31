@@ -252,3 +252,101 @@ def get_release_info(release_id, is_master=True):
         return None
 
 
+def search_albums(query, page=1, per_page=20):
+    """
+    Search for albums on Discogs by title.
+
+    Args:
+        query: Album title to search for
+        page: Page number (1-indexed)
+        per_page: Number of results per page
+
+    Returns:
+        Dict with albums list, has_more flag, page, and next_page
+    """
+    try:
+        d = _get_client()
+        results = d.search(query, type='master', per_page=per_page, page=page)
+
+        albums = []
+        for master in results:
+            # Extract artist name - try multiple sources
+            artist_name = ''
+            album_title = master.title if hasattr(master, 'title') else ''
+
+            # Method 1: Check artists list (full master objects)
+            if hasattr(master, 'artists') and master.artists:
+                try:
+                    artist_name = master.artists[0].name
+                except (IndexError, AttributeError):
+                    pass
+
+            # Method 2: Check data dict (search results often have this)
+            if not artist_name and hasattr(master, 'data'):
+                data = master.data
+                if isinstance(data, dict):
+                    # Try 'artist' field in data
+                    if 'artist' in data:
+                        artist_name = data['artist']
+                    # Try parsing from title "Artist - Album"
+                    elif 'title' in data and ' - ' in data['title']:
+                        artist_name = data['title'].split(' - ')[0].strip()
+                        album_title = data['title'].split(' - ', 1)[1].strip() if ' - ' in data['title'] else album_title
+
+            # Method 3: Parse from title if it contains " - " pattern
+            if not artist_name and hasattr(master, 'title') and ' - ' in master.title:
+                parts = master.title.split(' - ', 1)
+                artist_name = parts[0].strip()
+                album_title = parts[1].strip() if len(parts) > 1 else album_title
+
+            # Clean disambiguation numbers from artist name
+            artist_name = clean_artist_name(artist_name) if artist_name else ''
+
+            albums.append({
+                'id': master.id,
+                'name': album_title,
+                'artist': artist_name,
+                'year': master.year if hasattr(master, 'year') else None,
+                'type': 'master'
+            })
+
+        # Determine pagination - safely extract pagination info
+        total_pages = 1
+        current_page = page
+
+        try:
+            # The discogs_client library may return pages/page as int or method
+            pages_attr = getattr(results, 'pages', None)
+            if pages_attr is not None:
+                total_pages = pages_attr() if callable(pages_attr) else int(pages_attr)
+        except (TypeError, ValueError):
+            pass
+
+        try:
+            page_attr = getattr(results, 'page', None)
+            if page_attr is not None:
+                current_page = page_attr() if callable(page_attr) else int(page_attr)
+        except (TypeError, ValueError):
+            pass
+
+        has_more = current_page < total_pages
+
+        logger.info(f"Album search for '{query}': found {len(albums)} results (page {current_page}/{total_pages})")
+
+        return {
+            'albums': albums,
+            'has_more': has_more,
+            'page': current_page,
+            'next_page': current_page + 1 if has_more else None
+        }
+
+    except Exception as e:
+        logger.error(f"Error searching albums on Discogs: {e}")
+        return {
+            'albums': [],
+            'has_more': False,
+            'page': page,
+            'next_page': None
+        }
+
+

@@ -13,6 +13,7 @@ MUSIXMATCH_API_KEY = os.environ.get('MUSIXMATCH_API_KEY', '')
 # Import Discogs client functions
 from pipeline.discogs_client import (
     search_artist as discogs_search_artist,
+    search_albums as discogs_search_albums,
     get_artist_albums as discogs_get_artist_albums,
     get_release_tracks as discogs_get_release_tracks,
     get_release_info as discogs_get_release_info,
@@ -56,39 +57,46 @@ def _extract_year_from_date(date_str):
     return None
 
 
-def _fetch_lyrics_musixmatch(artist_name, song_title):
-    """Fetch lyrics from Musixmatch API."""
+def _fetch_lyrics_musixmatch(artist_name, song_title, max_retries=2):
+    """Fetch lyrics from Musixmatch API with retry logic."""
     if not MUSIXMATCH_API_KEY:
         return ''
 
-    try:
-        response = requests.get(
-            'https://api.musixmatch.com/ws/1.1/matcher.lyrics.get',
-            params={
-                'q_track': song_title,
-                'q_artist': artist_name,
-                'apikey': MUSIXMATCH_API_KEY,
-            },
-            timeout=15
-        )
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(
+                'https://api.musixmatch.com/ws/1.1/matcher.lyrics.get',
+                params={
+                    'q_track': song_title,
+                    'q_artist': artist_name,
+                    'apikey': MUSIXMATCH_API_KEY,
+                },
+                timeout=15
+            )
 
-        if response.status_code == 200:
-            data = response.json()
-            message = data.get('message', {})
-            if message.get('header', {}).get('status_code') == 200:
-                body = message.get('body', {})
-                lyrics = body.get('lyrics', {}).get('lyrics_body', '')
-                if lyrics:
-                    # Musixmatch adds a disclaimer at the end, remove it
-                    if '******* This Lyrics is NOT for Commercial use *******' in lyrics:
-                        lyrics = lyrics.split('******* This Lyrics is NOT for Commercial use *******')[0].strip()
-                    logger.info(f"Got lyrics from Musixmatch for: {artist_name} - {song_title}")
-                    return lyrics
+            if response.status_code == 200:
+                data = response.json()
+                message = data.get('message', {})
+                if message.get('header', {}).get('status_code') == 200:
+                    body = message.get('body', {})
+                    lyrics = body.get('lyrics', {}).get('lyrics_body', '')
+                    if lyrics:
+                        # Musixmatch adds a disclaimer at the end, remove it
+                        if '******* This Lyrics is NOT for Commercial use *******' in lyrics:
+                            lyrics = lyrics.split('******* This Lyrics is NOT for Commercial use *******')[0].strip()
+                        logger.info(f"Got lyrics from Musixmatch for: {artist_name} - {song_title}")
+                        return lyrics
 
-        return ''
-    except Exception as e:
-        logger.debug(f"Musixmatch failed for {artist_name} - {song_title}: {e}")
-        return ''
+            # If we got a response but no lyrics, don't retry (song not found)
+            if response.status_code == 200:
+                return ''
+
+        except Exception as e:
+            logger.debug(f"Musixmatch attempt {attempt + 1} failed for {artist_name} - {song_title}: {e}")
+            if attempt < max_retries - 1:
+                time.sleep(1)  # Wait 1 second before retry
+
+    return ''
 
 
 def _fetch_lyrics_lyricsovh(artist_name, song_title):
@@ -188,6 +196,31 @@ def get_artist_albums_by_id(artist_id, artist_name, page=1, per_page=20):
         return None
     except Exception as e:
         logger.error(f"Error getting artist albums: {e}")
+        return None
+
+
+def search_albums_by_title(query, page=1, per_page=20):
+    """
+    Search for albums by title using Discogs.
+
+    Args:
+        query: Album title to search for
+        page: Page number (1-indexed)
+        per_page: Number of albums per page
+
+    Returns:
+        Dict with albums list, has_more flag, page, and next_page, or None on error
+    """
+    if not query or not query.strip():
+        return None
+
+    try:
+        result = discogs_search_albums(query.strip(), page=page, per_page=per_page)
+        logger.info(f"Album search for '{query}': found {len(result.get('albums', []))} results")
+        return result
+
+    except Exception as e:
+        logger.error(f"Error searching albums by title: {e}")
         return None
 
 

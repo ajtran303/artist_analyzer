@@ -1,1 +1,1 @@
-"""Test suite for Artist Lyrical Analysis Service."""
+"""Test suite for Lyrical Analysis Service."""

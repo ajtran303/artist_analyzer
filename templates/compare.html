@@ -1,6 +1,5 @@
-{% extends "base.html" %}
-{% block title %}Compare Albums{% endblock %}
-{% block content %}
+{% extends "base.html" %} {% block title %}Compare Albums{% endblock %} {% block
+content %}
 <div class="compare-header">
   <a href="/" class="back-link">&larr; Back to Search</a>
   <h1>Compare Albums</h1>
@@ -92,6 +91,53 @@
     </div>
   </section>
 
+  <!-- Theme Overlap -->
+  <section class="compare-card">
+    <button class="accordion-header" data-section="themes">
+      <h2>Theme Overlap</h2>
+      <span class="accordion-icon">+</span>
+    </button>
+    <div class="accordion-content collapsed" id="themes-section">
+      <p class="section-description">
+        Top words that appear in each album's lyrics.
+      </p>
+      <div class="theme-overlap">
+        <div class="theme-group">
+          <h4 class="album-a-color">Only in Album A</h4>
+          <div id="themes-only-a" class="theme-tags"></div>
+        </div>
+        <div class="theme-group shared">
+          <h4>Shared</h4>
+          <div id="themes-shared" class="theme-tags"></div>
+        </div>
+        <div class="theme-group">
+          <h4 class="album-b-color">Only in Album B</h4>
+          <div id="themes-only-b" class="theme-tags"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Discovered Themes in Common (LDA) -->
+  <section class="compare-card">
+    <button class="accordion-header" data-section="discovered">
+      <h2>Discovered Themes in Common</h2>
+      <span class="accordion-icon">+</span>
+    </button>
+    <div class="accordion-content collapsed" id="discovered-section">
+      <p class="section-description">
+        Topics discovered by LDA (Latent Dirichlet Allocation) analyzing lyrics
+        from both albums together.
+      </p>
+      <div id="discovered-topics" class="discovered-topics">
+        <div class="discovered-loading">
+          <span class="spinner"></span>
+          <span>Analyzing combined lyrics...</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- Vocabulary Comparison -->
   <section class="compare-card">
     <button class="accordion-header" data-section="vocabulary">
@@ -126,56 +172,12 @@
     </div>
   </section>
 
-  <!-- Theme Overlap -->
-  <section class="compare-card">
-    <button class="accordion-header" data-section="themes">
-      <h2>Theme Overlap</h2>
-      <span class="accordion-icon">+</span>
-    </button>
-    <div class="accordion-content collapsed" id="themes-section">
-      <p class="section-description">Top words that appear in each album's lyrics.</p>
-      <div class="theme-overlap">
-        <div class="theme-group">
-          <h4 class="album-a-color">Only in Album A</h4>
-          <div id="themes-only-a" class="theme-tags"></div>
-        </div>
-        <div class="theme-group shared">
-          <h4>Shared</h4>
-          <div id="themes-shared" class="theme-tags"></div>
-        </div>
-        <div class="theme-group">
-          <h4 class="album-b-color">Only in Album B</h4>
-          <div id="themes-only-b" class="theme-tags"></div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Discovered Themes in Common (LDA) -->
-  <section class="compare-card">
-    <button class="accordion-header" data-section="discovered">
-      <h2>Discovered Themes in Common</h2>
-      <span class="accordion-icon">+</span>
-    </button>
-    <div class="accordion-content collapsed" id="discovered-section">
-      <p class="section-description">Topics discovered by LDA (Latent Dirichlet Allocation) analyzing lyrics from both albums together.</p>
-      <div id="discovered-topics" class="discovered-topics">
-        <div class="discovered-loading">
-          <span class="spinner"></span>
-          <span>Analyzing combined lyrics...</span>
-        </div>
-      </div>
-    </div>
-  </section>
-
   <!-- Actions -->
   <div class="compare-actions">
     <a href="/" class="btn">Analyze Another Album</a>
   </div>
 </div>
-{% endblock %}
-
-{% block scripts %}
+{% endblock %} {% block scripts %}
 <script>
   const JOB_ID_A = "{{ job_id_a }}";
   const JOB_ID_B = "{{ job_id_b }}";

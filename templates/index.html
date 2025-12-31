@@ -1,7 +1,7 @@
-{% extends "base.html" %} {% block title %}Artist Lyrical Analysis - Home{%
-endblock %} {% block content %}
+{% extends "base.html" %} {% block title %}Lyrical Analysis - Home{% endblock %}
+{% block content %}
 <div class="hero">
-  <h1>Artist Lyrical Analysis</h1>
+  <h1>Lyrical Analysis</h1>
   <p class="subtitle">
     Track sentiment evolution, reveal lyrical patterns, and discover hidden
     themes
@@ -18,33 +18,80 @@ endblock %} {% block content %}
   </div>
 </div>
 
-<!-- Step 1: Search for Artist -->
+<!-- Step 1: Search -->
 <div class="search-section">
-  <form id="search-form" class="analyze-form">
-    <label for="artist-name" class="input-label">Artist Name</label>
-    <div class="input-group">
-      <input
-        type="text"
-        id="artist-name"
-        name="artist_name"
-        placeholder="(e.g., The Cure)"
-        required
-        autocomplete="off"
-      />
-      <button type="submit" id="search-btn">
-        <span class="btn-text">Search</span>
-        <span class="btn-loading hidden">
-          <span class="spinner"></span>
-          Searching...
-        </span>
-      </button>
+  <!-- Tab Navigation -->
+  <div class="search-tabs">
+    <button class="tab-btn active" data-tab="artist">Search by Artist</button>
+    <button class="tab-btn" data-tab="album">Search by Album</button>
+  </div>
+
+  <div class="tab-content">
+    <!-- Artist Search Tab -->
+    <div class="tab-panel active" id="artist-tab">
+      <form id="search-form" class="analyze-form">
+        <label for="artist-name" class="input-label">Artist Name</label>
+        <div class="input-group">
+          <input
+            type="text"
+            id="artist-name"
+            name="artist_name"
+            placeholder="(e.g., The Cure)"
+            required
+            autocomplete="off"
+          />
+          <button type="submit" id="search-btn">
+            <span class="btn-text">Search</span>
+            <span class="btn-loading hidden">
+              <span class="spinner"></span>
+              Searching...
+            </span>
+          </button>
+        </div>
+      </form>
     </div>
-    <p class="language-notice">
-      Sentiment analysis and theme detection are optimized for English.
-    </p>
-  </form>
+
+    <!-- Album Search Tab -->
+    <div class="tab-panel" id="album-tab">
+      <form id="album-search-form" class="analyze-form">
+        <label for="album-query" class="input-label">Album Title</label>
+        <div class="input-group">
+          <input
+            type="text"
+            id="album-query"
+            name="album_query"
+            placeholder="(e.g., Disintegration)"
+            required
+            autocomplete="off"
+          />
+          <button type="submit" id="album-search-btn">
+            <span class="btn-text">Search</span>
+            <span class="btn-loading hidden">
+              <span class="spinner"></span>
+              Searching...
+            </span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <p class="language-notice">
+    Sentiment analysis and theme detection are optimized for English.
+  </p>
 
   <div id="error-message" class="error-message hidden"></div>
+</div>
+
+<!-- Album Search Results (hidden initially) -->
+<div id="album-search-results" class="album-section hidden">
+  <div class="album-header">
+    <h2 id="album-search-title">
+      Albums matching "<span id="album-search-query"></span>"
+    </h2>
+    <p class="album-instruction">Select an album to analyze</p>
+  </div>
+  <div id="album-search-grid" class="album-grid"></div>
 </div>
 
 <!-- Loading Albums Section (hidden initially) -->
@@ -130,7 +177,9 @@ endblock %} {% block content %}
     <p id="analysis-fun-fact" class="fun-fact"></p>
   </div>
 
-  <p class="lyrics-note">Some tracks may be excluded if lyrics are unavailable or instrumental.</p>
+  <p class="lyrics-note">
+    Some tracks may be excluded if lyrics are unavailable or instrumental.
+  </p>
 </div>
 
 <div class="features">

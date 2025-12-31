@@ -3,13 +3,29 @@
  */
 
 document.addEventListener("DOMContentLoaded", function () {
-  // Search form elements
+  // Tab elements
+  const tabBtns = document.querySelectorAll(".tab-btn");
+  const tabPanels = document.querySelectorAll(".tab-panel");
+
+  // Artist search form elements
   const searchForm = document.getElementById("search-form");
   const artistInput = document.getElementById("artist-name");
   const searchBtn = document.getElementById("search-btn");
   const searchBtnText = searchBtn.querySelector(".btn-text");
   const searchBtnLoading = searchBtn.querySelector(".btn-loading");
   const errorMessage = document.getElementById("error-message");
+
+  // Album search form elements
+  const albumSearchForm = document.getElementById("album-search-form");
+  const albumQueryInput = document.getElementById("album-query");
+  const albumSearchBtn = document.getElementById("album-search-btn");
+  const albumSearchBtnText = albumSearchBtn.querySelector(".btn-text");
+  const albumSearchBtnLoading = albumSearchBtn.querySelector(".btn-loading");
+
+  // Album search results elements
+  const albumSearchResultsSection = document.getElementById("album-search-results");
+  const albumSearchQueryDisplay = document.getElementById("album-search-query");
+  const albumSearchGrid = document.getElementById("album-search-grid");
 
   // Loading section elements
   const loadingSection = document.getElementById("loading-section");
@@ -42,12 +58,20 @@ document.addEventListener("DOMContentLoaded", function () {
   let isCompareMode = false;
   let compareAlbumA = null;
 
-  // Pagination state
+  // Pagination state (artist search)
   let currentPage = 1;
   let hasMore = false;
   let isLoadingMore = false;
   let totalAlbums = 0;
   let albumIndex = 0; // For playlist numbering
+
+  // Album search state
+  let currentSearchMode = 'artist';
+  let albumSearchQuery = '';
+  let albumSearchPage = 1;
+  let albumSearchHasMore = false;
+  let albumSearchIsLoading = false;
+  let albumSearchIndex = 0;
 
   // Fun facts interval
   let funFactInterval = null;
@@ -56,6 +80,286 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Check for compare mode on load
   initCompareMode();
+
+  // Tab switching
+  tabBtns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const targetTab = btn.dataset.tab;
+      switchTab(targetTab);
+    });
+  });
+
+  function switchTab(tab) {
+    currentSearchMode = tab;
+
+    // Update tab buttons
+    tabBtns.forEach(btn => {
+      btn.classList.toggle("active", btn.dataset.tab === tab);
+    });
+
+    // Update tab panels
+    tabPanels.forEach(panel => {
+      panel.classList.toggle("active", panel.id === `${tab}-tab`);
+    });
+
+    // Hide results sections when switching tabs
+    hideError();
+    albumSection.classList.add("hidden");
+    albumSearchResultsSection.classList.add("hidden");
+    loadingSection.classList.add("hidden");
+  }
+
+  // Album search form submission
+  albumSearchForm.addEventListener("submit", async function (e) {
+    e.preventDefault();
+
+    const query = albumQueryInput.value.trim();
+    if (!query) {
+      showError("Please enter an album title");
+      return;
+    }
+
+    // Reset album search state
+    albumSearchQuery = query;
+    albumSearchPage = 1;
+    albumSearchHasMore = false;
+    albumSearchIndex = 0;
+
+    setAlbumSearchLoading(true);
+    hideError();
+    hideAlbumSection();
+    albumSearchResultsSection.classList.add("hidden");
+    showLoadingSection(query);
+
+    try {
+      const response = await fetch(
+        `/api/albums/search?q=${encodeURIComponent(query)}&page=1`
+      );
+      const data = await response.json();
+
+      hideLoadingSection();
+
+      if (response.ok) {
+        albumSearchHasMore = data.has_more;
+        albumSearchPage = data.next_page || 2;
+        displayAlbumSearchResults(data, query, false);
+      } else {
+        showError(data.error || "No albums found");
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      hideLoadingSection();
+      showError("Network error. Please try again.");
+    } finally {
+      setAlbumSearchLoading(false);
+    }
+  });
+
+  // Infinite scroll for album search results
+  albumSearchGrid.addEventListener("scroll", async function () {
+    if (!albumSearchHasMore || albumSearchIsLoading) return;
+
+    const scrollTop = albumSearchGrid.scrollTop;
+    const scrollHeight = albumSearchGrid.scrollHeight;
+    const clientHeight = albumSearchGrid.clientHeight;
+
+    if (scrollTop + clientHeight >= scrollHeight - 100) {
+      await loadMoreAlbumSearchResults();
+    }
+  });
+
+  async function loadMoreAlbumSearchResults() {
+    if (albumSearchIsLoading || !albumSearchHasMore) return;
+
+    albumSearchIsLoading = true;
+    showAlbumSearchLoadingIndicator();
+
+    try {
+      const response = await fetch(
+        `/api/albums/search?q=${encodeURIComponent(albumSearchQuery)}&page=${albumSearchPage}`
+      );
+      const data = await response.json();
+
+      if (response.ok) {
+        albumSearchHasMore = data.has_more;
+        albumSearchPage = data.next_page || albumSearchPage + 1;
+        appendAlbumSearchResults(data.albums);
+        updateAlbumSearchCount();
+      }
+    } catch (error) {
+      console.error("Error loading more albums:", error);
+    } finally {
+      albumSearchIsLoading = false;
+      hideAlbumSearchLoadingIndicator();
+    }
+  }
+
+  function displayAlbumSearchResults(data, query, append = false) {
+    albumSearchQueryDisplay.textContent = query;
+
+    if (!append) {
+      albumSearchGrid.innerHTML = "";
+      albumSearchIndex = 0;
+    }
+
+    if (!data.albums || data.albums.length === 0) {
+      if (!append) {
+        albumSearchGrid.innerHTML =
+          '<p class="no-albums">No albums found matching this title</p>';
+      }
+      albumSearchResultsSection.classList.remove("hidden");
+      return;
+    }
+
+    appendAlbumSearchResults(data.albums);
+    updateAlbumSearchCount();
+    albumSearchResultsSection.classList.remove("hidden");
+  }
+
+  function appendAlbumSearchResults(albums) {
+    albums.forEach((album) => {
+      albumSearchIndex++;
+      const albumItem = document.createElement("div");
+      albumItem.className = "album-item";
+      albumItem.dataset.albumId = album.id;
+      albumItem.dataset.artistName = album.artist;
+
+      const year = album.year || "";
+      const yearDisplay = year ? `(${year})` : "";
+
+      albumItem.innerHTML = `
+        <span class="album-index">${albumSearchIndex}.</span>
+        <div class="album-info">
+          <span class="album-name">${album.name}</span>
+          <span class="album-artist">${album.artist}</span>
+          <span class="album-year">${yearDisplay}</span>
+        </div>
+        <div class="album-action hidden">
+          <button class="analyze-album-btn">
+            <span class="btn-text">Analyze</span>
+            <span class="btn-loading hidden">
+              <span class="spinner"></span>
+            </span>
+          </button>
+        </div>
+      `;
+
+      albumItem.addEventListener("click", (e) => {
+        if (e.target.closest(".analyze-album-btn")) return;
+        selectAlbumFromSearch(albumItem, album);
+      });
+
+      const analyzeBtn = albumItem.querySelector(".analyze-album-btn");
+      analyzeBtn.addEventListener("click", () =>
+        analyzeAlbumFromSearch(album, analyzeBtn)
+      );
+
+      albumSearchGrid.appendChild(albumItem);
+    });
+  }
+
+  function selectAlbumFromSearch(item, album) {
+    if (isAnalyzing) return;
+
+    document.querySelectorAll("#album-search-grid .album-item").forEach((el) => {
+      el.classList.remove("selected");
+      el.querySelector(".album-action").classList.add("hidden");
+    });
+
+    item.classList.add("selected");
+    item.querySelector(".album-action").classList.remove("hidden");
+  }
+
+  async function analyzeAlbumFromSearch(album, button) {
+    if (isAnalyzing) return;
+
+    isAnalyzing = true;
+    const btnText = button.querySelector(".btn-text");
+    const btnLoading = button.querySelector(".btn-loading");
+
+    button.disabled = true;
+    btnText.classList.add("hidden");
+    btnLoading.classList.remove("hidden");
+
+    try {
+      const response = await fetch("/api/analyze", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          artist_name: album.artist,
+          album_id: album.id,
+          album_name: album.name,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        if (isCompareMode && compareAlbumA) {
+          showAnalysisProgress(data.job_id);
+        } else {
+          window.location.href = `/results/${data.job_id}`;
+        }
+      } else {
+        showError(data.error || "Failed to start analysis");
+        resetAnalyzeButton(button);
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      showError("Network error. Please try again.");
+      resetAnalyzeButton(button);
+    }
+  }
+
+  function updateAlbumSearchCount() {
+    let notice = albumSearchResultsSection.querySelector(".album-limit-notice");
+    if (!notice) {
+      notice = document.createElement("p");
+      notice.className = "album-limit-notice";
+      albumSearchResultsSection.appendChild(notice);
+    }
+
+    const loadedCount = albumSearchGrid.querySelectorAll(".album-item").length;
+    if (albumSearchHasMore) {
+      notice.textContent = `${loadedCount} albums loaded (scroll for more)`;
+    } else {
+      notice.textContent = `${loadedCount} albums`;
+    }
+  }
+
+  function showAlbumSearchLoadingIndicator() {
+    let loader = document.getElementById("album-search-load-more-indicator");
+    if (!loader) {
+      loader = document.createElement("div");
+      loader.id = "album-search-load-more-indicator";
+      loader.className = "load-more-indicator";
+      loader.innerHTML = '<span class="spinner"></span> Loading more albums...';
+      albumSearchResultsSection.appendChild(loader);
+    }
+    loader.classList.remove("hidden");
+  }
+
+  function hideAlbumSearchLoadingIndicator() {
+    const loader = document.getElementById("album-search-load-more-indicator");
+    if (loader) {
+      loader.classList.add("hidden");
+    }
+  }
+
+  function setAlbumSearchLoading(loading) {
+    albumSearchBtn.disabled = loading;
+    albumQueryInput.disabled = loading;
+
+    if (loading) {
+      albumSearchBtnText.classList.add("hidden");
+      albumSearchBtnLoading.classList.remove("hidden");
+    } else {
+      albumSearchBtnText.classList.remove("hidden");
+      albumSearchBtnLoading.classList.add("hidden");
+    }
+  }
 
   // Fun facts about lyrics and music
   const funFacts = [

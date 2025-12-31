@@ -87,11 +87,12 @@ document.addEventListener("DOMContentLoaded", function () {
         albumNameEl.textContent = data.album;
       }
 
-      // Store album data for comparison feature
+      // Store album data for comparison and retry features
       currentAlbumData = {
         job_id: JOB_ID,
         artist: data.artist,
-        album: data.album
+        album: data.album,
+        album_id: data.album_id,
       };
 
       if (data.status === "completed") {
@@ -107,7 +108,12 @@ document.addEventListener("DOMContentLoaded", function () {
       } else {
         // Still processing
         statusText.textContent = data.progress || getStatusMessage(data.status);
-        updateProgress(data.stage || 0, data.total_stages || 6, data.sub_current, data.sub_total);
+        updateProgress(
+          data.stage || 0,
+          data.total_stages || 6,
+          data.sub_current,
+          data.sub_total
+        );
         updateSteps(data.stage || 0);
       }
     } catch (error) {
@@ -123,10 +129,10 @@ document.addEventListener("DOMContentLoaded", function () {
     // Add sub-progress within current stage if available
     let subProgress = 0;
     if (subCurrent && subTotal && subTotal > 0) {
-      subProgress = (subCurrent / subTotal) / totalStages;
+      subProgress = subCurrent / subTotal / totalStages;
     }
 
-    const percent = Math.round(Math.max(0, (stageProgress + subProgress)) * 100);
+    const percent = Math.round(Math.max(0, stageProgress + subProgress) * 100);
     progressFill.style.width = `${percent}%`;
     progressPercent.textContent = `${percent}%`;
   }
@@ -183,6 +189,20 @@ document.addEventListener("DOMContentLoaded", function () {
     compareBtn.classList.remove("hidden");
     setupCompareButton();
 
+    // Show tracks analyzed count in header
+    const songsCount = results.songs_count || 0;
+    const totalTracks = results.total_tracks || songsCount;
+    const tracksAnalyzedEl = document.getElementById("tracks-analyzed");
+    if (tracksAnalyzedEl) {
+      if (totalTracks > songsCount) {
+        tracksAnalyzedEl.innerHTML = `${songsCount}/${totalTracks} tracks analyzed <span class="partial-reason">(some lyrics unavailable)</span> <br/> <button class="retry-link" id="retry-btn">Retry</button> <span class="retry-warning">(results may vary)</span>`;
+        tracksAnalyzedEl.classList.add("partial");
+        setupRetryButton();
+      } else {
+        tracksAnalyzedEl.textContent = `${songsCount} tracks analyzed`;
+      }
+    }
+
     // Render topics
     renderTopics(results.topics || []);
 
@@ -195,12 +215,11 @@ document.addEventListener("DOMContentLoaded", function () {
     // Render metaphors
     renderMetaphors(results.metaphors || []);
 
-    // Update stats
-    const songsCount = results.songs_count || 0;
-    const totalTracks = results.total_tracks || songsCount;
-
+    // Update stats display
     if (totalTracks > songsCount) {
-      document.getElementById("songs-count").textContent = `${songsCount} of ${totalTracks}`;
+      document.getElementById(
+        "songs-count"
+      ).textContent = `${songsCount} of ${totalTracks}`;
       document.getElementById("songs-label").textContent = "Tracks Analyzed";
     } else {
       document.getElementById("songs-count").textContent = songsCount;
@@ -430,6 +449,47 @@ document.addEventListener("DOMContentLoaded", function () {
     statusSection.classList.add("hidden");
     errorSection.classList.remove("hidden");
     errorMessageEl.textContent = message;
+  }
+
+  function setupRetryButton() {
+    const retryBtn = document.getElementById("retry-btn");
+    if (!retryBtn || !currentAlbumData) return;
+
+    retryBtn.addEventListener("click", async () => {
+      retryBtn.disabled = true;
+      retryBtn.textContent = "Retrying...";
+
+      try {
+        const response = await fetch("/api/analyze", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            artist_name: currentAlbumData.artist,
+            album_id: currentAlbumData.album_id,
+            album_name: currentAlbumData.album,
+            force: true,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          // Redirect to new job (or same page if job_id is same)
+          window.location.href = `/results/${data.job_id}`;
+        } else {
+          showToast(data.error || "Retry failed");
+          retryBtn.disabled = false;
+          retryBtn.textContent = "Retry";
+        }
+      } catch (error) {
+        console.error("Retry error:", error);
+        showToast("Network error. Please try again.");
+        retryBtn.disabled = false;
+        retryBtn.textContent = "Retry";
+      }
+    });
   }
 
   // Compare feature functions

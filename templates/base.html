@@ -1,27 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Artist Lyrical Analysis{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}Lyrical Analysis{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='music_note.svg') }}" />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
     {% block head %}{% endblock %}
-</head>
-<body>
+  </head>
+  <body>
     <nav class="navbar">
-        <div class="nav-container">
-            <a href="/" class="nav-logo">Lyrical Analysis</a>
-        </div>
+      <div class="nav-container">
+        <a href="/" class="nav-logo">Lyrical Analysis</a>
+      </div>
     </nav>
 
-    <main class="container">
-        {% block content %}{% endblock %}
-    </main>
+    <main class="container">{% block content %}{% endblock %}</main>
 
     <footer class="footer">
-        <p>Powered by LDA Topic Modeling & Sentiment Analysis</p>
+      <p>Powered by LDA Topic Modeling & Sentiment Analysis</p>
     </footer>
 
     {% block scripts %}{% endblock %}
-</body>
+  </body>
 </html>

@@ -1,1 +1,1 @@
-"""Integration tests for Artist Lyrical Analysis Service."""
+"""Integration tests for Lyrical Analysis Service."""

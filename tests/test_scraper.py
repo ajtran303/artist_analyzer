@@ -5,12 +5,13 @@ from unittest.mock import patch, MagicMock
 
 from pipeline.scraper import (
     search_artist_albums,
+    search_albums_by_title,
     scrape_album,
     _normalize_album_name,
     _extract_year_from_date,
     ScraperError
 )
-from pipeline.discogs_client import clean_artist_name
+from pipeline.discogs_client import clean_artist_name, search_albums
 
 
 @pytest.mark.unit
@@ -214,3 +215,264 @@ class TestCleanArtistName:
         """Does not remove parentheses containing text."""
         assert clean_artist_name('Artist (UK)') == 'Artist (UK)'
         assert clean_artist_name('Band (featuring Guest)') == 'Band (featuring Guest)'
+
+
+@pytest.mark.unit
+class TestSearchAlbums:
+    """Tests for search_albums function in discogs_client."""
+
+    @patch('pipeline.discogs_client._get_client')
+    def test_returns_correct_structure(self, mock_get_client):
+        """Returns correct structure with albums list and pagination."""
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+
+        # Mock search results - use spec_set to properly set .name attribute
+        mock_artist1 = MagicMock()
+        mock_artist1.name = 'The Cure'
+        mock_master1 = MagicMock()
+        mock_master1.id = 12345
+        mock_master1.title = 'Disintegration'
+        mock_master1.year = 1989
+        mock_master1.artists = [mock_artist1]
+
+        mock_artist2 = MagicMock()
+        mock_artist2.name = 'Monolord'
+        mock_master2 = MagicMock()
+        mock_master2.id = 67890
+        mock_master2.title = 'Disintegration'
+        mock_master2.year = 2014
+        mock_master2.artists = [mock_artist2]
+
+        mock_results = MagicMock()
+        mock_results.__iter__ = lambda self: iter([mock_master1, mock_master2])
+        mock_results.__len__ = lambda self: 2
+        mock_results.pages = 1
+        mock_results.page = 1
+
+        mock_client.search.return_value = mock_results
+
+        result = search_albums('Disintegration')
+
+        assert 'albums' in result
+        assert 'has_more' in result
+        assert 'page' in result
+        assert len(result['albums']) == 2
+        assert result['albums'][0]['id'] == 12345
+        assert result['albums'][0]['name'] == 'Disintegration'
+        assert result['albums'][0]['artist'] == 'The Cure'
+        assert result['albums'][0]['year'] == 1989
+
+    @patch('pipeline.discogs_client._get_client')
+    def test_returns_empty_if_no_results(self, mock_get_client):
+        """Returns empty albums list if no results found."""
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+
+        mock_results = MagicMock()
+        mock_results.__iter__ = lambda self: iter([])
+        mock_results.__len__ = lambda self: 0
+        mock_results.pages = 0
+        mock_results.page = 1
+
+        mock_client.search.return_value = mock_results
+
+        result = search_albums('Nonexistent Album Title XYZ')
+
+        assert result['albums'] == []
+        assert result['has_more'] is False
+
+    @patch('pipeline.discogs_client._get_client')
+    def test_cleans_artist_name_in_results(self, mock_get_client):
+        """Artist names are cleaned of disambiguation numbers."""
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+
+        mock_artist = MagicMock()
+        mock_artist.name = 'Will Wood (7)'
+        mock_master = MagicMock()
+        mock_master.id = 11111
+        mock_master.title = 'Test Album'
+        mock_master.year = 2020
+        mock_master.artists = [mock_artist]
+
+        mock_results = MagicMock()
+        mock_results.__iter__ = lambda self: iter([mock_master])
+        mock_results.__len__ = lambda self: 1
+        mock_results.pages = 1
+        mock_results.page = 1
+
+        mock_client.search.return_value = mock_results
+
+        result = search_albums('Test Album')
+
+        assert result['albums'][0]['artist'] == 'Will Wood'
+
+    @patch('pipeline.discogs_client._get_client')
+    def test_handles_pagination(self, mock_get_client):
+        """Handles pagination with has_more and next_page."""
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+
+        mock_artist = MagicMock()
+        mock_artist.name = 'Artist'
+        mock_master = MagicMock()
+        mock_master.id = 12345
+        mock_master.title = 'Album'
+        mock_master.year = 2020
+        mock_master.artists = [mock_artist]
+
+        mock_results = MagicMock()
+        mock_results.__iter__ = lambda self: iter([mock_master])
+        mock_results.__len__ = lambda self: 1
+        mock_results.pages = 3
+        mock_results.page = 1
+
+        mock_client.search.return_value = mock_results
+
+        result = search_albums('Album', page=1)
+
+        assert result['has_more'] is True
+        assert result['next_page'] == 2
+        assert result['page'] == 1
+
+    @patch('pipeline.discogs_client._get_client')
+    def test_returns_empty_on_exception(self, mock_get_client):
+        """Returns empty result on API exception."""
+        mock_get_client.side_effect = Exception("API Error")
+
+        result = search_albums('Test Album')
+
+        assert result['albums'] == []
+        assert result['has_more'] is False
+
+    @patch('pipeline.discogs_client._get_client')
+    def test_handles_missing_artist(self, mock_get_client):
+        """Handles albums without artist information."""
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+
+        mock_master = MagicMock()
+        mock_master.id = 12345
+        mock_master.title = 'Various Artists Compilation'
+        mock_master.year = 2020
+        mock_master.artists = []
+
+        mock_results = MagicMock()
+        mock_results.__iter__ = lambda self: iter([mock_master])
+        mock_results.__len__ = lambda self: 1
+        mock_results.pages = 1
+        mock_results.page = 1
+
+        mock_client.search.return_value = mock_results
+
+        result = search_albums('Various Artists Compilation')
+
+        assert result['albums'][0]['artist'] == ''
+
+    @patch('pipeline.discogs_client._get_client')
+    def test_extracts_artist_from_title(self, mock_get_client):
+        """Extracts artist from 'Artist - Album' title format."""
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+
+        # Simulate search result with artist in title (common Discogs format)
+        mock_master = MagicMock()
+        mock_master.id = 12345
+        mock_master.title = 'Abnormity (2) - Irreversible Disintegration'
+        mock_master.year = 2010
+        mock_master.artists = []  # Empty artists list
+
+        mock_results = MagicMock()
+        mock_results.__iter__ = lambda self: iter([mock_master])
+        mock_results.__len__ = lambda self: 1
+        mock_results.pages = 1
+        mock_results.page = 1
+
+        mock_client.search.return_value = mock_results
+
+        result = search_albums('Irreversible Disintegration')
+
+        # Should extract and clean artist name from title
+        assert result['albums'][0]['artist'] == 'Abnormity'
+        assert result['albums'][0]['name'] == 'Irreversible Disintegration'
+
+
+@pytest.mark.unit
+class TestSearchAlbumsByTitle:
+    """Tests for search_albums_by_title function in scraper."""
+
+    @patch('pipeline.scraper.discogs_search_albums')
+    def test_returns_correct_structure(self, mock_search):
+        """Returns correct structure with albums list and pagination."""
+        mock_search.return_value = {
+            'albums': [
+                {'id': 12345, 'name': 'Disintegration', 'artist': 'The Cure', 'year': 1989, 'type': 'master'},
+                {'id': 67890, 'name': 'Disintegration', 'artist': 'Monolord', 'year': 2014, 'type': 'master'}
+            ],
+            'has_more': False,
+            'page': 1,
+            'next_page': None
+        }
+
+        result = search_albums_by_title('Disintegration')
+
+        assert 'albums' in result
+        assert len(result['albums']) == 2
+        assert result['albums'][0]['name'] == 'Disintegration'
+        assert result['albums'][0]['artist'] == 'The Cure'
+
+    @patch('pipeline.scraper.discogs_search_albums')
+    def test_returns_empty_if_no_results(self, mock_search):
+        """Returns empty albums list if no results found."""
+        mock_search.return_value = {
+            'albums': [],
+            'has_more': False,
+            'page': 1,
+            'next_page': None
+        }
+
+        result = search_albums_by_title('Nonexistent Album')
+
+        assert result['albums'] == []
+
+    @patch('pipeline.scraper.discogs_search_albums')
+    def test_handles_pagination(self, mock_search):
+        """Handles pagination parameters."""
+        mock_search.return_value = {
+            'albums': [{'id': 1, 'name': 'Test', 'artist': 'Artist', 'year': 2020, 'type': 'master'}],
+            'has_more': True,
+            'page': 2,
+            'next_page': 3
+        }
+
+        result = search_albums_by_title('Test', page=2)
+
+        mock_search.assert_called_once_with('Test', page=2, per_page=20)
+        assert result['has_more'] is True
+        assert result['next_page'] == 3
+
+    @patch('pipeline.scraper.discogs_search_albums')
+    def test_returns_none_on_exception(self, mock_search):
+        """Returns None on API exception."""
+        mock_search.side_effect = Exception("API Error")
+
+        result = search_albums_by_title('Test Album')
+
+        assert result is None
+
+    @patch('pipeline.scraper.discogs_search_albums')
+    def test_empty_query_returns_none(self, mock_search):
+        """Returns None for empty query."""
+        result = search_albums_by_title('')
+
+        assert result is None
+        mock_search.assert_not_called()
+
+    @patch('pipeline.scraper.discogs_search_albums')
+    def test_whitespace_query_returns_none(self, mock_search):
+        """Returns None for whitespace-only query."""
+        result = search_albums_by_title('   ')
+
+        assert result is None
+        mock_search.assert_not_called()

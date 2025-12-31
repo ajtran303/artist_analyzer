@@ -8,6 +8,10 @@ document.addEventListener("DOMContentLoaded", async function () {
   const errorMessage = document.getElementById("error-message");
   const compareSection = document.getElementById("compare-section");
 
+  // Store album data for retry functionality
+  let albumDataA = null;
+  let albumDataB = null;
+
   // Validate job IDs
   if (!JOB_ID_A || !JOB_ID_B) {
     showError("Missing album IDs for comparison");
@@ -66,19 +70,35 @@ document.addEventListener("DOMContentLoaded", async function () {
     const albumB = data.album_b;
     const sharedTopics = data.shared_topics || [];
 
+    // Store album data for retry functionality
+    albumDataA = albumA;
+    albumDataB = albumB;
+
     // Album headers
     document.getElementById("album-a-name").textContent = albumA.album || "-";
-    document.getElementById("album-a-artist").textContent = albumA.artist || "-";
+    document.getElementById("album-a-artist").textContent =
+      albumA.artist || "-";
     document.getElementById("album-b-name").textContent = albumB.album || "-";
-    document.getElementById("album-b-artist").textContent = albumB.artist || "-";
+    document.getElementById("album-b-artist").textContent =
+      albumB.artist || "-";
 
     // Get results
     const resultsA = albumA.results || {};
     const resultsB = albumB.results || {};
 
-    // Track counts
-    document.getElementById("album-a-tracks").textContent = formatTrackCount(resultsA);
-    document.getElementById("album-b-tracks").textContent = formatTrackCount(resultsB);
+    // Track counts with retry buttons
+    document.getElementById("album-a-tracks").innerHTML = formatTrackCount(
+      resultsA,
+      "a"
+    );
+    document.getElementById("album-b-tracks").innerHTML = formatTrackCount(
+      resultsB,
+      "b"
+    );
+
+    // Set up retry buttons if needed
+    setupRetryButton("a", albumA);
+    setupRetryButton("b", albumB);
 
     // Render sentiment comparison
     renderSentiment(resultsA, resultsB);
@@ -132,7 +152,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (Math.abs(delta) > 0.05) {
       const winner = delta > 0 ? "Album A" : "Album B";
       const arrow = delta > 0 ? "↑" : "↓";
-      deltaEl.innerHTML = `<span class="${delta > 0 ? 'album-a-color' : 'album-b-color'}">${winner} is more positive ${arrow}</span>`;
+      deltaEl.innerHTML = `<span class="${
+        delta > 0 ? "album-a-color" : "album-b-color"
+      }">${winner} is more positive ${arrow}</span>`;
     } else {
       deltaEl.textContent = "Similar sentiment";
     }
@@ -142,20 +164,24 @@ document.addEventListener("DOMContentLoaded", async function () {
     const statsB = resultsB.stats || {};
 
     if (statsA.most_positive) {
-      document.getElementById("positive-a").textContent =
-        `${statsA.most_positive.title} (${formatScore(statsA.most_positive.score)})`;
+      document.getElementById("positive-a").textContent = `${
+        statsA.most_positive.title
+      } (${formatScore(statsA.most_positive.score)})`;
     }
     if (statsB.most_positive) {
-      document.getElementById("positive-b").textContent =
-        `${statsB.most_positive.title} (${formatScore(statsB.most_positive.score)})`;
+      document.getElementById("positive-b").textContent = `${
+        statsB.most_positive.title
+      } (${formatScore(statsB.most_positive.score)})`;
     }
     if (statsA.most_negative) {
-      document.getElementById("negative-a").textContent =
-        `${statsA.most_negative.title} (${formatScore(statsA.most_negative.score)})`;
+      document.getElementById("negative-a").textContent = `${
+        statsA.most_negative.title
+      } (${formatScore(statsA.most_negative.score)})`;
     }
     if (statsB.most_negative) {
-      document.getElementById("negative-b").textContent =
-        `${statsB.most_negative.title} (${formatScore(statsB.most_negative.score)})`;
+      document.getElementById("negative-b").textContent = `${
+        statsB.most_negative.title
+      } (${formatScore(statsB.most_negative.score)})`;
     }
 
     // Track by track bars
@@ -175,14 +201,15 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
 
     // Find max for scaling across both albums
-    const maxAbs = Math.max(...songs.map(s => Math.abs(s.score)), 0.1);
+    const maxAbs = Math.max(...songs.map((s) => Math.abs(s.score)), 0.1);
 
-    container.innerHTML = songs.map(song => {
-      const score = song.score || 0;
-      const percentage = (Math.abs(score) / maxAbs) * 100;
-      const barClass = score >= 0 ? "positive" : "negative";
+    container.innerHTML = songs
+      .map((song) => {
+        const score = song.score || 0;
+        const percentage = (Math.abs(score) / maxAbs) * 100;
+        const barClass = score >= 0 ? "positive" : "negative";
 
-      return `
+        return `
         <div class="track-bar-item">
           <span class="track-title" title="${song.title}">${song.title}</span>
           <div class="track-bar-wrapper">
@@ -191,7 +218,8 @@ document.addEventListener("DOMContentLoaded", async function () {
           <span class="track-score ${barClass}">${formatScore(score)}</span>
         </div>
       `;
-    }).join("");
+      })
+      .join("");
   }
 
   function renderVocabulary(resultsA, resultsB) {
@@ -199,16 +227,20 @@ document.addEventListener("DOMContentLoaded", async function () {
     const statsB = resultsB.stats || {};
 
     // Total words
-    document.getElementById("words-a").textContent =
-      (statsA.total_words || 0).toLocaleString();
-    document.getElementById("words-b").textContent =
-      (statsB.total_words || 0).toLocaleString();
+    document.getElementById("words-a").textContent = (
+      statsA.total_words || 0
+    ).toLocaleString();
+    document.getElementById("words-b").textContent = (
+      statsB.total_words || 0
+    ).toLocaleString();
 
     // Unique words
-    document.getElementById("unique-a").textContent =
-      (statsA.unique_words || 0).toLocaleString();
-    document.getElementById("unique-b").textContent =
-      (statsB.unique_words || 0).toLocaleString();
+    document.getElementById("unique-a").textContent = (
+      statsA.unique_words || 0
+    ).toLocaleString();
+    document.getElementById("unique-b").textContent = (
+      statsB.unique_words || 0
+    ).toLocaleString();
 
     // Richness
     document.getElementById("richness-a").textContent =
@@ -222,15 +254,19 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   function renderThemes(resultsA, resultsB) {
-    const wordsA = (resultsA.word_frequency || []).slice(0, 20).map(w => w.word);
-    const wordsB = (resultsB.word_frequency || []).slice(0, 20).map(w => w.word);
+    const wordsA = (resultsA.word_frequency || [])
+      .slice(0, 20)
+      .map((w) => w.word);
+    const wordsB = (resultsB.word_frequency || [])
+      .slice(0, 20)
+      .map((w) => w.word);
 
     const setA = new Set(wordsA);
     const setB = new Set(wordsB);
 
-    const shared = wordsA.filter(w => setB.has(w));
-    const onlyA = wordsA.filter(w => !setB.has(w));
-    const onlyB = wordsB.filter(w => !setA.has(w));
+    const shared = wordsA.filter((w) => setB.has(w));
+    const onlyA = wordsA.filter((w) => !setB.has(w));
+    const onlyB = wordsB.filter((w) => !setA.has(w));
 
     renderThemeTags("themes-shared", shared, "shared");
     renderThemeTags("themes-only-a", onlyA, "album-a");
@@ -246,7 +282,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
 
     container.innerHTML = words
-      .map(w => `<span class="theme-tag ${type}">${w}</span>`)
+      .map((w) => `<span class="theme-tag ${type}">${w}</span>`)
       .join("");
   }
 
@@ -254,10 +290,55 @@ document.addEventListener("DOMContentLoaded", async function () {
     return score >= 0 ? `+${score.toFixed(2)}` : score.toFixed(2);
   }
 
-  function formatTrackCount(results) {
+  function formatTrackCount(results, albumKey) {
     const analyzed = results.songs_count || 0;
     const total = results.total_tracks || analyzed;
-    return `${analyzed}/${total} tracks analyzed`;
+    if (total > analyzed) {
+      return `${analyzed}/${total} tracks analyzed <span class="partial-reason">(some lyrics unavailable)</span> <br/> <button class="retry-link" id="retry-btn-${albumKey}">Retry</button> <span class="retry-warning">(results may vary)</span>`;
+    }
+    return `${analyzed} tracks analyzed`;
+  }
+
+  function setupRetryButton(albumKey, albumData) {
+    const retryBtn = document.getElementById(`retry-btn-${albumKey}`);
+    if (!retryBtn || !albumData) return;
+
+    retryBtn.addEventListener("click", async () => {
+      retryBtn.disabled = true;
+      retryBtn.textContent = "Retrying...";
+
+      try {
+        const response = await fetch("/api/analyze", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            artist_name: albumData.artist,
+            album_id: albumData.album_id,
+            album_name: albumData.album,
+            force: true,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          // Redirect to results page for the new analysis
+          // User can return to compare after it completes
+          window.location.href = `/results/${data.job_id}`;
+        } else {
+          alert(data.error || "Retry failed");
+          retryBtn.disabled = false;
+          retryBtn.textContent = "Retry";
+        }
+      } catch (error) {
+        console.error("Retry error:", error);
+        alert("Network error. Please try again.");
+        retryBtn.disabled = false;
+        retryBtn.textContent = "Retry";
+      }
+    });
   }
 
   function getSentimentClass(score) {
@@ -270,17 +351,19 @@ document.addEventListener("DOMContentLoaded", async function () {
     const container = document.getElementById("discovered-topics");
 
     if (!topics || topics.length === 0) {
-      container.innerHTML = '<p class="no-topics">No shared themes discovered. The albums may have very different lyrical content.</p>';
+      container.innerHTML =
+        '<p class="no-topics">No shared themes discovered. The albums may have very different lyrical content.</p>';
       return;
     }
 
-    container.innerHTML = topics.map(topic => {
-      const keywords = Object.entries(topic.keywords || {})
-        .slice(0, 8)
-        .map(([word, weight]) => `<span class="keyword-tag">${word}</span>`)
-        .join("");
+    container.innerHTML = topics
+      .map((topic) => {
+        const keywords = Object.entries(topic.keywords || {})
+          .slice(0, 8)
+          .map(([word, weight]) => `<span class="keyword-tag">${word}</span>`)
+          .join("");
 
-      return `
+        return `
         <div class="discovered-topic">
           <div class="topic-header">
             <h4 class="topic-name">${topic.name}</h4>
@@ -288,6 +371,7 @@ document.addEventListener("DOMContentLoaded", async function () {
           <div class="topic-keywords">${keywords}</div>
         </div>
       `;
-    }).join("");
+      })
+      .join("");
   }
 });

@@ -158,6 +158,48 @@ def get_artist_albums(artist_id):
         return jsonify({'error': 'Internal server error'}), 500
 
 
+@api_bp.route('/albums/search', methods=['GET'])
+def search_albums():
+    """
+    Search for albums by title.
+
+    Query params:
+        q: Album title to search for
+        page: Page number (default: 1)
+
+    Returns:
+        {albums: [{id, name, artist, year, type}], has_more, page, next_page}
+    """
+    query = request.args.get('q', '').strip()
+    page = request.args.get('page', 1, type=int)
+
+    if not query:
+        return jsonify({'error': 'Search query (q) is required'}), 400
+
+    if page < 1:
+        page = 1
+
+    # Sanitize input
+    query = sanitize_input(query)
+
+    if not query:
+        return jsonify({'error': 'Invalid search query'}), 400
+
+    try:
+        from pipeline.scraper import search_albums_by_title
+
+        result = search_albums_by_title(query, page=page)
+
+        if result is None:
+            return jsonify({'error': 'Album search failed'}), 500
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        logger.error(f"Error searching albums: {type(e).__name__}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+
 @api_bp.route('/analyze', methods=['POST'])
 def submit_analysis():
     """
@@ -191,12 +233,21 @@ def submit_analysis():
         # Get album info
         album_id = data.get('album_id')
         album_name = sanitize_input(data.get('album_name', ''))
+        force_refresh = data.get('force', False)
 
         if not album_id:
             return jsonify({'error': 'album_id is required'}), 400
 
         # Check for existing analysis for this artist + album
         existing = Analysis.get_by_artist_album(artist_name, album_id)
+
+        if existing:
+            # If force refresh requested, delete existing and re-analyze
+            if force_refresh and existing.status == 'completed':
+                from database import db
+                db.session.delete(existing)
+                db.session.commit()
+                existing = None
 
         if existing:
             if existing.status == 'completed':
@@ -227,7 +278,6 @@ def submit_analysis():
             # If failed or stuck, allow retry by deleting old record
             if existing.status == 'failed' or is_stuck:
                 from database import db
-                logger.info(f"Deleting {'stuck' if is_stuck else 'failed'} analysis {existing.id}")
                 db.session.delete(existing)
                 db.session.commit()
 
@@ -236,20 +286,13 @@ def submit_analysis():
 
         # Queue Celery task (pass artist_name for lyrics search)
         from pipeline.tasks import analyze_album_async
-        logger.info(f"Sending task to Celery for analysis_id={analysis.id}")
-        try:
-            task = analyze_album_async.delay(album_id, album_name, analysis.id, artist_name)
-            logger.info(f"Task sent successfully, task.id={task.id}")
-        except Exception as celery_error:
-            logger.error(f"Failed to send Celery task: {celery_error}")
-            raise
+        task = analyze_album_async.delay(album_id, album_name, analysis.id, artist_name)
 
         # Update analysis with job ID
         analysis.job_id = task.id
         from database import db
         db.session.commit()
 
-        # Log without sensitive data
         logger.info(f"Queued analysis for album with job_id {task.id}")
 
         return jsonify({
@@ -290,6 +333,7 @@ def get_analysis_status(job_id):
             'status': analysis.status,
             'artist': analysis.artist_name,
             'album': analysis.album_name,
+            'album_id': analysis.album_id,
             'total_stages': TOTAL_STAGES
         }
 
@@ -434,12 +478,14 @@ def compare_albums():
                 'job_id': job_id_a,
                 'artist': analysis_a.artist_name,
                 'album': analysis_a.album_name,
+                'album_id': analysis_a.album_id,
                 'results': analysis_a.results
             },
             'album_b': {
                 'job_id': job_id_b,
                 'artist': analysis_b.artist_name,
                 'album': analysis_b.album_name,
+                'album_id': analysis_b.album_id,
                 'results': analysis_b.results
             },
             'shared_topics': shared_topics
