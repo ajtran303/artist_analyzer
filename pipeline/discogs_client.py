@@ -304,7 +304,7 @@ def get_release_info(release_id, is_master=True):
 
 def search_albums(query, page=1, per_page=20):
     """
-    Search for albums on Discogs by title.
+    Search for albums on Discogs by title using direct API call.
 
     Args:
         query: Album title to search for
@@ -314,73 +314,58 @@ def search_albums(query, page=1, per_page=20):
     Returns:
         Dict with albums list, has_more flag, page, and next_page
     """
+    headers = {
+        'User-Agent': 'ArtistAnalyzer/1.0',
+        'Authorization': f'Discogs token={DISCOGS_TOKEN}',
+    }
+
     try:
         _check_rate_limit()
-        d = _get_client()
-        results = d.search(query, type='master', per_page=per_page, page=page)
-        _track_discogs_call(success=True)
+
+        # Use requests directly for proper timeout control
+        response = requests.get(
+            'https://api.discogs.com/database/search',
+            params={
+                'q': query,
+                'type': 'master',
+                'page': page,
+                'per_page': per_page,
+            },
+            headers=headers,
+            timeout=15  # 15 second timeout for search
+        )
+        _track_discogs_call(success=response.ok)
+        response.raise_for_status()
+        data = response.json()
+
+        results = data.get('results', [])
+        pagination = data.get('pagination', {})
 
         albums = []
-        for master in results:
-            # Extract artist name - try multiple sources
+        for result in results:
+            # Parse "Artist - Album" format from title
+            title = result.get('title', '')
             artist_name = ''
-            album_title = master.title if hasattr(master, 'title') else ''
+            album_title = title
 
-            # Method 1: Check artists list (full master objects)
-            if hasattr(master, 'artists') and master.artists:
-                try:
-                    artist_name = master.artists[0].name
-                except (IndexError, AttributeError):
-                    pass
-
-            # Method 2: Check data dict (search results often have this)
-            if not artist_name and hasattr(master, 'data'):
-                data = master.data
-                if isinstance(data, dict):
-                    # Try 'artist' field in data
-                    if 'artist' in data:
-                        artist_name = data['artist']
-                    # Try parsing from title "Artist - Album"
-                    elif 'title' in data and ' - ' in data['title']:
-                        artist_name = data['title'].split(' - ')[0].strip()
-                        album_title = data['title'].split(' - ', 1)[1].strip() if ' - ' in data['title'] else album_title
-
-            # Method 3: Parse from title if it contains " - " pattern
-            if not artist_name and hasattr(master, 'title') and ' - ' in master.title:
-                parts = master.title.split(' - ', 1)
+            if ' - ' in title:
+                parts = title.split(' - ', 1)
                 artist_name = parts[0].strip()
-                album_title = parts[1].strip() if len(parts) > 1 else album_title
+                album_title = parts[1].strip() if len(parts) > 1 else title
 
             # Clean disambiguation numbers from artist name
             artist_name = clean_artist_name(artist_name) if artist_name else ''
 
             albums.append({
-                'id': master.id,
+                'id': result.get('id'),
                 'name': album_title,
                 'artist': artist_name,
-                'year': master.year if hasattr(master, 'year') else None,
+                'year': result.get('year'),
                 'type': 'master'
             })
 
-        # Determine pagination - safely extract pagination info
-        total_pages = 1
-        current_page = page
-
-        try:
-            # The discogs_client library may return pages/page as int or method
-            pages_attr = getattr(results, 'pages', None)
-            if pages_attr is not None:
-                total_pages = pages_attr() if callable(pages_attr) else int(pages_attr)
-        except (TypeError, ValueError):
-            pass
-
-        try:
-            page_attr = getattr(results, 'page', None)
-            if page_attr is not None:
-                current_page = page_attr() if callable(page_attr) else int(page_attr)
-        except (TypeError, ValueError):
-            pass
-
+        total_pages = pagination.get('pages', 1)
+        current_page = pagination.get('page', page)
         has_more = current_page < total_pages
 
         logger.info(f"Album search for '{query}': found {len(albums)} results (page {current_page}/{total_pages})")
@@ -394,6 +379,15 @@ def search_albums(query, page=1, per_page=20):
 
     except DiscogsError:
         raise
+    except requests.Timeout:
+        _track_discogs_call(success=False)
+        logger.error(f"Timeout searching albums on Discogs for: {query}")
+        return {
+            'albums': [],
+            'has_more': False,
+            'page': page,
+            'next_page': None
+        }
     except Exception as e:
         _track_discogs_call(success=False)
         logger.error(f"Error searching albums on Discogs: {e}")
