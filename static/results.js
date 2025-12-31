@@ -209,8 +209,8 @@ document.addEventListener("DOMContentLoaded", function () {
     // Render sentiment
     renderSentiment(results.sentiment || {});
 
-    // Render most emotional passage
-    renderEmotionalPassage(results.stats?.most_emotional_passage);
+    // Render most emotional passages (positive and negative)
+    renderEmotionalPassages(results.stats?.emotional_passages);
 
     // Render word frequency
     renderWordFrequency(results.word_frequency || []);
@@ -329,27 +329,65 @@ document.addEventListener("DOMContentLoaded", function () {
     setupSortToggle();
   }
 
-  function renderEmotionalPassage(passage) {
-    const section = document.getElementById("emotional-passage-section");
-    const songTitleEl = document.getElementById("passage-song-title");
-    const badgeEl = document.getElementById("passage-sentiment-badge");
-    const textEl = document.getElementById("passage-text");
+  function renderEmotionalPassages(passages) {
+    const section = document.getElementById("emotional-passages-section");
 
-    if (!passage || !passage.passage) {
+    if (!passages) {
+      section.classList.add("hidden");
+      return;
+    }
+
+    const positivePassage = passages.most_positive;
+    const negativePassage = passages.most_negative;
+
+    // If neither passage exists, hide the section
+    if (!positivePassage && !negativePassage) {
       section.classList.add("hidden");
       return;
     }
 
     section.classList.remove("hidden");
 
-    // Set song title
-    songTitleEl.textContent = `From "${passage.song_title}"`;
+    // Render positive passage
+    renderSinglePassage(
+      positivePassage,
+      "positive-passage-container",
+      "positive-passage-song",
+      "positive-passage-score",
+      "positive-passage-text",
+      true
+    );
 
-    // Set sentiment badge
+    // Render negative passage
+    renderSinglePassage(
+      negativePassage,
+      "negative-passage-container",
+      "negative-passage-song",
+      "negative-passage-score",
+      "negative-passage-text",
+      false
+    );
+  }
+
+  function renderSinglePassage(passage, containerId, songId, scoreId, textId, isPositive) {
+    const container = document.getElementById(containerId);
+    const songEl = document.getElementById(songId);
+    const scoreEl = document.getElementById(scoreId);
+    const textEl = document.getElementById(textId);
+
+    if (!passage || !passage.passage) {
+      container.classList.add("hidden");
+      return;
+    }
+
+    container.classList.remove("hidden");
+
+    // Set song title
+    songEl.textContent = `From "${passage.song_title}"`;
+
+    // Set sentiment score badge
     const score = passage.score || 0;
-    const isPositive = passage.sentiment_type === "positive";
-    badgeEl.textContent = `${isPositive ? "+" : ""}${score.toFixed(2)} ${getSentimentLabel(score)}`;
-    badgeEl.className = `passage-sentiment-badge ${isPositive ? "positive" : "negative"}`;
+    scoreEl.textContent = `${score >= 0 ? "+" : ""}${score.toFixed(2)}`;
 
     // Set passage text with line breaks preserved
     textEl.innerHTML = passage.passage

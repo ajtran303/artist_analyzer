@@ -160,25 +160,36 @@ def get_sentiment_timeline(songs: List[Dict]) -> List[Dict]:
     return [{'year': item['year'], 'score': item['score']} for item in by_year]
 
 
-def find_most_emotional_passage(songs: List[Dict]) -> Dict:
+def find_most_emotional_passages(songs: List[Dict]) -> Dict:
     """
-    Find the most emotionally intense passage across all songs.
+    Find the most positive and most negative passages across all songs.
 
     Analyzes lyrics by splitting into passages (verses) and finding
-    the one with the highest absolute sentiment score.
+    the passages with the highest and lowest sentiment scores.
+
+    Only includes passages that are clearly positive (>= 0.05) or
+    negative (<= -0.05), excluding neutral content. Will not return
+    the same passage for both if there's only one emotional passage.
 
     Args:
         songs: List of song dicts with 'lyrics' and 'title' keys
 
     Returns:
-        Dict with: song_title, passage, score, sentiment_type ('positive'/'negative')
-        Returns None if no valid passages found.
+        Dict with 'most_positive' and 'most_negative', each containing:
+            song_title, passage, score
+        Returns None values if no valid passages found.
     """
-    if not songs:
-        return None
+    # Thresholds matching the UI's neutral range (-0.05 to 0.05)
+    POSITIVE_THRESHOLD = 0.05
+    NEGATIVE_THRESHOLD = -0.05
 
-    most_emotional = None
-    highest_intensity = 0.0
+    if not songs:
+        return {'most_positive': None, 'most_negative': None}
+
+    most_positive = None
+    most_negative = None
+    highest_score = POSITIVE_THRESHOLD  # Must exceed this to count as positive
+    lowest_score = NEGATIVE_THRESHOLD   # Must be below this to count as negative
 
     for song in songs:
         lyrics = song.get('lyrics', '')
@@ -195,18 +206,70 @@ def find_most_emotional_passage(songs: List[Dict]) -> Dict:
                 continue
 
             score = _analyze_sentiment(passage)
-            intensity = abs(score)
 
-            if intensity > highest_intensity:
-                highest_intensity = intensity
-                most_emotional = {
+            # Track most positive (must be above positive threshold)
+            if score >= POSITIVE_THRESHOLD and score > highest_score:
+                highest_score = score
+                most_positive = {
                     'song_title': title,
                     'passage': passage.strip(),
-                    'score': score,
-                    'sentiment_type': 'positive' if score >= 0 else 'negative'
+                    'score': score
                 }
 
-    return most_emotional
+            # Track most negative (must be below negative threshold)
+            if score <= NEGATIVE_THRESHOLD and score < lowest_score:
+                lowest_score = score
+                most_negative = {
+                    'song_title': title,
+                    'passage': passage.strip(),
+                    'score': score
+                }
+
+    # Don't return the same passage for both (can happen with single passage)
+    if (most_positive and most_negative and
+            most_positive['passage'] == most_negative['passage']):
+        # Keep whichever has higher absolute score
+        if abs(most_positive['score']) >= abs(most_negative['score']):
+            most_negative = None
+        else:
+            most_positive = None
+
+    return {
+        'most_positive': most_positive,
+        'most_negative': most_negative
+    }
+
+
+def find_most_emotional_passage(songs: List[Dict]) -> Dict:
+    """
+    Find the most emotionally intense passage across all songs.
+
+    DEPRECATED: Use find_most_emotional_passages() instead.
+
+    Args:
+        songs: List of song dicts with 'lyrics' and 'title' keys
+
+    Returns:
+        Dict with: song_title, passage, score, sentiment_type ('positive'/'negative')
+        Returns None if no valid passages found.
+    """
+    result = find_most_emotional_passages(songs)
+
+    # Return whichever has higher absolute score
+    pos = result.get('most_positive')
+    neg = result.get('most_negative')
+
+    if not pos and not neg:
+        return None
+    if not pos:
+        return {**neg, 'sentiment_type': 'negative'}
+    if not neg:
+        return {**pos, 'sentiment_type': 'positive'}
+
+    if abs(pos['score']) >= abs(neg['score']):
+        return {**pos, 'sentiment_type': 'positive'}
+    else:
+        return {**neg, 'sentiment_type': 'negative'}
 
 
 def _split_into_passages(lyrics: str) -> List[str]:

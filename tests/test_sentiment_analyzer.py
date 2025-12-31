@@ -9,6 +9,7 @@ from pipeline.sentiment_analyzer import (
     _aggregate_by_year,
     get_sentiment_timeline,
     find_most_emotional_passage,
+    find_most_emotional_passages,
     _split_into_passages
 )
 
@@ -270,92 +271,167 @@ class TestSplitIntoPassages:
 
 
 @pytest.mark.unit
-class TestFindMostEmotionalPassage:
-    """Tests for find_most_emotional_passage function."""
+class TestFindMostEmotionalPassages:
+    """Tests for find_most_emotional_passages function."""
 
-    def test_finds_most_positive_passage(self):
-        """Finds the most emotionally intense positive passage."""
+    def test_finds_both_positive_and_negative(self):
+        """Finds both the most positive and most negative passages."""
+        songs = [
+            {
+                'title': 'Mixed Song',
+                'lyrics': "I love everything! Joy and happiness forever!\n\nI hate everything! Pain and suffering everywhere!"
+            }
+        ]
+
+        result = find_most_emotional_passages(songs)
+
+        assert result is not None
+        assert 'most_positive' in result
+        assert 'most_negative' in result
+        assert result['most_positive'] is not None
+        assert result['most_negative'] is not None
+        assert result['most_positive']['score'] >= 0.05  # Above positive threshold
+        assert result['most_negative']['score'] <= -0.05  # Below negative threshold
+
+    def test_finds_passages_across_multiple_songs(self):
+        """Finds passages across multiple songs."""
         songs = [
             {
                 'title': 'Happy Song',
-                'lyrics': "Neutral text here.\n\nI love everything! Joy and happiness forever! This is amazing!"
+                'lyrics': "I absolutely love this wonderful amazing beautiful fantastic day!"
+            },
+            {
+                'title': 'Sad Song',
+                'lyrics': "I hate everything terrible awful horrible disaster pain!"
             }
         ]
 
-        result = find_most_emotional_passage(songs)
+        result = find_most_emotional_passages(songs)
 
-        assert result is not None
-        assert result['song_title'] == 'Happy Song'
-        assert result['sentiment_type'] == 'positive'
-        assert result['score'] > 0
-        assert 'love' in result['passage'].lower() or 'joy' in result['passage'].lower()
+        assert result['most_positive']['song_title'] == 'Happy Song'
+        assert result['most_negative']['song_title'] == 'Sad Song'
 
-    def test_finds_most_negative_passage(self):
-        """Finds the most emotionally intense negative passage."""
+    def test_returns_none_values_for_empty_songs(self):
+        """Returns dict with None values when no songs provided."""
+        result = find_most_emotional_passages([])
+
+        assert result == {'most_positive': None, 'most_negative': None}
+
+    def test_returns_none_values_for_songs_without_lyrics(self):
+        """Returns dict with None values when songs have no lyrics."""
+        songs = [
+            {'title': 'No Lyrics', 'lyrics': ''},
+            {'title': 'Also No Lyrics', 'lyrics': '   '}
+        ]
+
+        result = find_most_emotional_passages(songs)
+
+        assert result['most_positive'] is None
+        assert result['most_negative'] is None
+
+    def test_result_structure(self):
+        """Result has correct structure for each passage."""
+        songs = [
+            {
+                'title': 'Test Song',
+                'lyrics': "I love this beautiful wonderful amazing day with so much joy!"
+            }
+        ]
+
+        result = find_most_emotional_passages(songs)
+
+        # Check most_positive structure
+        pos = result['most_positive']
+        assert pos is not None
+        assert 'song_title' in pos
+        assert 'passage' in pos
+        assert 'score' in pos
+
+    def test_neutral_content_returns_none(self):
+        """Neutral content (score between -0.05 and 0.05) returns None."""
+        songs = [
+            {
+                'title': 'Neutral Song',
+                'lyrics': "The table is in the room. The door is open. The window is closed."
+            }
+        ]
+
+        result = find_most_emotional_passages(songs)
+
+        # Both should be None since content is neutral
+        assert result['most_positive'] is None
+        assert result['most_negative'] is None
+
+    def test_same_passage_not_returned_twice(self):
+        """When only one emotional passage exists, it's not duplicated."""
+        songs = [
+            {
+                'title': 'Only Song',
+                'lyrics': "I love this wonderful amazing beautiful fantastic incredible day!"
+            }
+        ]
+
+        result = find_most_emotional_passages(songs)
+
+        # Only one should be set (the positive one since the text is positive)
+        assert result['most_positive'] is not None
+        assert result['most_negative'] is None  # Not duplicated
+
+    def test_only_positive_content(self):
+        """Album with only positive content returns only most_positive."""
+        songs = [
+            {
+                'title': 'Happy Song',
+                'lyrics': "Joy and love everywhere!\n\nHappiness and wonderful feelings!"
+            }
+        ]
+
+        result = find_most_emotional_passages(songs)
+
+        assert result['most_positive'] is not None
+        assert result['most_negative'] is None  # No negative content
+
+    def test_only_negative_content(self):
+        """Album with only negative content returns only most_negative."""
         songs = [
             {
                 'title': 'Sad Song',
-                'lyrics': "Neutral text here.\n\nI hate everything! Pain and suffering everywhere! This is terrible awful!"
+                'lyrics': "Pain and suffering everywhere!\n\nTerrible awful horrible disaster!"
             }
         ]
 
-        result = find_most_emotional_passage(songs)
+        result = find_most_emotional_passages(songs)
 
-        assert result is not None
-        assert result['song_title'] == 'Sad Song'
-        assert result['sentiment_type'] == 'negative'
-        assert result['score'] < 0
+        assert result['most_positive'] is None  # No positive content
+        assert result['most_negative'] is not None
 
-    def test_compares_across_songs(self):
-        """Finds the most emotional passage across multiple songs."""
+
+@pytest.mark.unit
+class TestFindMostEmotionalPassageLegacy:
+    """Tests for find_most_emotional_passage function (legacy/deprecated)."""
+
+    def test_returns_most_intense_passage(self):
+        """Returns the passage with highest absolute sentiment."""
         songs = [
             {
-                'title': 'Mildly Happy',
-                'lyrics': "This is nice and pleasant."
-            },
-            {
-                'title': 'Very Happy',
-                'lyrics': "I absolutely love this wonderful amazing beautiful fantastic day!"
+                'title': 'Mixed Song',
+                'lyrics': "The table is in the room.\n\nI hate everything terrible awful horrible disaster pain suffering!"
             }
         ]
 
         result = find_most_emotional_passage(songs)
 
         assert result is not None
-        assert result['song_title'] == 'Very Happy'
+        assert result['sentiment_type'] == 'negative'
+        assert result['score'] < 0
 
     def test_returns_none_for_empty_songs(self):
         """Returns None when no songs provided."""
         result = find_most_emotional_passage([])
         assert result is None
 
-    def test_returns_none_for_songs_without_lyrics(self):
-        """Returns None when songs have no lyrics."""
-        songs = [
-            {'title': 'No Lyrics', 'lyrics': ''},
-            {'title': 'Also No Lyrics', 'lyrics': '   '}
-        ]
-
-        result = find_most_emotional_passage(songs)
-        assert result is None
-
-    def test_skips_very_short_passages(self):
-        """Skips passages shorter than 20 characters."""
-        songs = [
-            {
-                'title': 'Song',
-                'lyrics': "Hi\n\nI love this beautiful wonderful amazing day with so much happiness!"
-            }
-        ]
-
-        result = find_most_emotional_passage(songs)
-
-        assert result is not None
-        assert len(result['passage']) >= 20
-        assert "Hi" not in result['passage']  # Short passage should be skipped
-
-    def test_result_structure(self):
-        """Result has correct structure."""
+    def test_result_has_sentiment_type(self):
+        """Result includes sentiment_type field."""
         songs = [
             {
                 'title': 'Test Song',
@@ -366,8 +442,5 @@ class TestFindMostEmotionalPassage:
         result = find_most_emotional_passage(songs)
 
         assert result is not None
-        assert 'song_title' in result
-        assert 'passage' in result
-        assert 'score' in result
         assert 'sentiment_type' in result
         assert result['sentiment_type'] in ['positive', 'negative']

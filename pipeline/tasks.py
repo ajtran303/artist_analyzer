@@ -45,7 +45,7 @@ def analyze_album_async(self, album_id: int, album_name: str, analysis_id: int, 
     from pipeline.scraper import scrape_album, ScraperError
     from pipeline.preprocessor import preprocess_lyrics
     from pipeline.lda_analyzer import run_lda, assign_topics_to_songs
-    from pipeline.sentiment_analyzer import run_sentiment, find_most_emotional_passage
+    from pipeline.sentiment_analyzer import run_sentiment, find_most_emotional_passages
     from pipeline.bonus_analyzer import analyze_word_frequency, analyze_metaphors, analyze_vocabulary_richness
 
     app = create_app()
@@ -107,8 +107,8 @@ def analyze_album_async(self, album_id: int, album_name: str, analysis_id: int, 
             sentiment_results = run_sentiment(processed_songs)
             processed_songs = sentiment_results['songs']
 
-            # Find most emotional passage
-            most_emotional_passage = find_most_emotional_passage(processed_songs)
+            # Find most emotional passages (both positive and negative)
+            emotional_passages = find_most_emotional_passages(processed_songs)
 
             # Stage 5: Bonus Analyses
             logger.info(f"========== STAGE 5/6: BONUS ANALYSES ==========")
@@ -178,7 +178,7 @@ def analyze_album_async(self, album_id: int, album_name: str, analysis_id: int, 
                     'vocabulary_richness': vocab_stats['vocabulary_richness'],
                     'most_positive': most_positive,
                     'most_negative': most_negative,
-                    'most_emotional_passage': most_emotional_passage
+                    'emotional_passages': emotional_passages
                 },
                 'timestamp': datetime.utcnow().isoformat()
             }

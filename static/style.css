@@ -1718,69 +1718,96 @@ body {
 }
 
 /* ===========================================
-   EMOTIONAL PASSAGE - Quoted Lyrics
+   EMOTIONAL PASSAGES - Quoted Lyrics
    =========================================== */
 
 .emotional-passage-card {
   background: var(--bg-medium);
 }
 
-.emotional-passage-container {
+.emotional-passages-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
   padding: 1rem;
+}
+
+@media (min-width: 768px) {
+  .emotional-passages-grid {
+    flex-direction: row;
+    gap: 1rem;
+  }
+}
+
+.emotional-passage-container {
+  flex: 1;
+  padding: 1rem;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-mid);
+}
+
+.emotional-passage-container.positive {
+  border-left: 3px solid var(--positive-color);
+}
+
+.emotional-passage-container.negative {
+  border-left: 3px solid var(--negative-color);
 }
 
 .passage-header {
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
 }
 
-@media (min-width: 480px) {
-  .passage-header {
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-  }
+.passage-type-label {
+  font-size: 0.8rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.passage-type-label.positive {
+  color: var(--positive-color);
+}
+
+.passage-type-label.negative {
+  color: var(--negative-color);
 }
 
 .passage-song-title {
-  font-size: 1rem;
-  color: var(--text-primary);
-  font-weight: bold;
+  display: block;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.75rem;
 }
 
 .passage-sentiment-badge {
   display: inline-block;
-  padding: 0.35rem 0.75rem;
-  font-size: 0.85rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
   font-weight: bold;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  border: 1px solid;
+  font-family: "VT323", monospace;
 }
 
 .passage-sentiment-badge.positive {
   color: var(--positive-color);
-  border-color: var(--positive-color);
-  background: rgba(0, 168, 232, 0.1);
 }
 
 .passage-sentiment-badge.negative {
   color: var(--negative-color);
-  border-color: var(--negative-color);
-  background: rgba(255, 107, 53, 0.1);
 }
 
 .passage-text {
   background: var(--lcd-bg);
-  border-left: 3px solid var(--accent-primary);
-  padding: 1rem 1.25rem;
+  padding: 1rem;
   margin: 0;
-  font-size: 1.05rem;
-  line-height: 1.8;
+  font-size: 0.95rem;
+  line-height: 1.7;
   color: var(--lcd-text);
   font-style: italic;
+  border: 1px solid var(--border-dark);
 }
 
 .passage-line {

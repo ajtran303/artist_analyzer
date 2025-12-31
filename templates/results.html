@@ -127,18 +127,31 @@ block content %}
     </div>
   </section>
 
-  <!-- Most Emotional Passage Section -->
-  <section id="emotional-passage-section" class="result-card emotional-passage-card hidden">
-    <h2>Most Emotional Passage</h2>
+  <!-- Most Emotional Passages Section -->
+  <section id="emotional-passages-section" class="result-card emotional-passage-card hidden">
+    <h2>Most Emotional Passages</h2>
     <p class="section-description">
-      The most emotionally intense lyrical passage from the album.
+      The most emotionally intense lyrical passages from the album.
     </p>
-    <div id="emotional-passage-container" class="emotional-passage-container">
-      <div class="passage-header">
-        <span id="passage-song-title" class="passage-song-title"></span>
-        <span id="passage-sentiment-badge" class="passage-sentiment-badge"></span>
+    <div class="emotional-passages-grid">
+      <!-- Most Positive Passage -->
+      <div id="positive-passage-container" class="emotional-passage-container positive hidden">
+        <div class="passage-header">
+          <span class="passage-type-label positive">Most Positive</span>
+          <span id="positive-passage-score" class="passage-sentiment-badge positive"></span>
+        </div>
+        <span id="positive-passage-song" class="passage-song-title"></span>
+        <blockquote id="positive-passage-text" class="passage-text"></blockquote>
       </div>
-      <blockquote id="passage-text" class="passage-text"></blockquote>
+      <!-- Most Negative Passage -->
+      <div id="negative-passage-container" class="emotional-passage-container negative hidden">
+        <div class="passage-header">
+          <span class="passage-type-label negative">Most Negative</span>
+          <span id="negative-passage-score" class="passage-sentiment-badge negative"></span>
+        </div>
+        <span id="negative-passage-song" class="passage-song-title"></span>
+        <blockquote id="negative-passage-text" class="passage-text"></blockquote>
+      </div>
     </div>
   </section>
 
