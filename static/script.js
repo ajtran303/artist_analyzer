@@ -711,7 +711,7 @@ document.addEventListener("DOMContentLoaded", function () {
         analysisStatusText.textContent = data.progress || "Processing...";
         updateAnalysisProgress(
           data.stage || 0,
-          data.total_stages || 6,
+          data.total_stages || 7,
           data.sub_current,
           data.sub_total
         );

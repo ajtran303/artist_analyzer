@@ -91,6 +91,32 @@ content %}
     </div>
   </section>
 
+  <!-- Emotional Profile Comparison -->
+  <section class="compare-card">
+    <button class="accordion-header" data-section="emotions">
+      <h2>Emotional Profile Comparison</h2>
+      <span class="accordion-icon">+</span>
+    </button>
+    <div class="accordion-content collapsed" id="emotions-section">
+      <p class="section-description">
+        Granular emotional analysis using NRC emotion lexicon.
+      </p>
+      <div class="emotions-comparison">
+        <div class="dominant-compare">
+          <div class="dominant-item album-a-color">
+            <span class="dominant-label">Album A Dominant</span>
+            <span id="dominant-a" class="dominant-value">-</span>
+          </div>
+          <div class="dominant-item album-b-color">
+            <span class="dominant-label">Album B Dominant</span>
+            <span id="dominant-b" class="dominant-value">-</span>
+          </div>
+        </div>
+        <div id="emotions-bars" class="emotions-compare-chart"></div>
+      </div>
+    </div>
+  </section>
+
   <!-- Discovered Themes in Common (LDA) -->
   <section class="compare-card">
     <button class="accordion-header" data-section="discovered">

@@ -14,6 +14,7 @@ alembic==1.13.0
 gensim>=4.3.2
 textblob==0.17.1
 nltk==3.8.1
+# NRCLex installed separately with --no-deps (has broken 'collections' dependency)
 
 # Scraping
 requests==2.31.0

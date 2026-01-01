@@ -1489,6 +1489,107 @@ body {
 }
 
 /* ===========================================
+   EMOTIONS - Emotional Profile
+   =========================================== */
+
+.emotions-container {
+  padding: 1rem;
+}
+
+.dominant-emotion {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-mid);
+}
+
+.dominant-label {
+  display: block;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.dominant-value {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: var(--accent-primary);
+  text-transform: capitalize;
+}
+
+.emotion-icon {
+  font-family: monospace;
+  font-size: 1.25rem;
+}
+
+.emotions-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.emotion-bar-item {
+  display: grid;
+  grid-template-columns: 100px 1fr 50px;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+@media (max-width: 480px) {
+  .emotion-bar-item {
+    grid-template-columns: 80px 1fr 45px;
+    gap: 0.5rem;
+  }
+}
+
+.emotion-label {
+  text-transform: capitalize;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.emotion-bar-wrapper {
+  height: 20px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-mid);
+  overflow: hidden;
+}
+
+.emotion-bar {
+  height: 100%;
+  transition: width 0.5s ease-out;
+}
+
+.emotion-bar.emotion-positive {
+  background: linear-gradient(90deg, var(--positive-color) 0%, #00c4ff 100%);
+  box-shadow: 0 0 5px var(--positive-color);
+}
+
+.emotion-bar.emotion-negative {
+  background: linear-gradient(90deg, var(--negative-color) 0%, #ffaa00 100%);
+  box-shadow: 0 0 5px var(--negative-color);
+}
+
+.emotion-bar.emotion-neutral {
+  background: linear-gradient(90deg, var(--accent-secondary) 0%, #ffcc00 100%);
+  box-shadow: 0 0 5px var(--accent-secondary);
+}
+
+.emotion-value {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  text-align: right;
+  font-family: var(--font-mono);
+}
+
+/* ===========================================
    WORD FREQUENCY - LED Ticker Style
    =========================================== */
 
@@ -2217,6 +2318,132 @@ body {
   color: var(--text-muted);
   font-style: italic;
   font-size: 0.9rem;
+}
+
+/* Emotions comparison */
+.emotions-comparison {
+  padding: 0.5rem 0;
+}
+
+.dominant-compare {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (min-width: 480px) {
+  .dominant-compare {
+    flex-direction: row;
+    gap: 1rem;
+  }
+}
+
+.dominant-item {
+  flex: 1;
+  text-align: center;
+  padding: 0.75rem;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-mid);
+}
+
+.dominant-item .dominant-label {
+  display: block;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-secondary);
+  margin-bottom: 0.25rem;
+}
+
+.dominant-item .dominant-value {
+  font-size: 1.25rem;
+  font-weight: bold;
+  text-transform: capitalize;
+}
+
+.emotions-compare-chart {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+@media (min-width: 600px) {
+  .emotions-compare-chart {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.emotion-faceoff {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-mid);
+  padding: 0.75rem;
+  text-align: center;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.emotion-faceoff.winner-a {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 8px rgba(0, 212, 255, 0.3);
+}
+
+.emotion-faceoff.winner-b {
+  border-color: var(--accent-secondary);
+  box-shadow: 0 0 8px rgba(255, 140, 0, 0.3);
+}
+
+.faceoff-header {
+  margin-bottom: 0.5rem;
+}
+
+.faceoff-emotion {
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 1px;
+  color: var(--text-secondary);
+}
+
+.faceoff-scores {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.faceoff-score {
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  font-weight: bold;
+}
+
+.faceoff-score.winner {
+  text-shadow: 0 0 8px currentColor;
+}
+
+.faceoff-vs {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.faceoff-result {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 0.2rem 0.5rem;
+  display: inline-block;
+}
+
+.faceoff-result.winner-a {
+  color: var(--accent-primary);
+}
+
+.faceoff-result.winner-b {
+  color: var(--accent-secondary);
+}
+
+.faceoff-result.tie {
+  color: var(--text-muted);
 }
 
 /* Vocabulary comparison */

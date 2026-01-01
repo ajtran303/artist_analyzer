@@ -1,8 +1,12 @@
 # User Reviews
 
+A collection of feedback from diverse users.
+
+---
+
 ## Dr. Eleanor Whitfield, 58 — English Literature Professor
 
-"I've been teaching poetry and lyrical analysis for over 25 years, and I must say this tool genuinely impressed me. I tested it with Bob Dylan's catalog and was struck by how the LDA topic modeling surfaced thematic threads I discuss in my 'Music as Literature' seminar—protest, mortality, romantic disillusionment. The sentiment tracking across albums mirrors what I've always argued: artists evolve. My one critique is I'd love to see more granular emotion categories beyond positive/negative. Still, I've already shared this with my graduate students. A remarkably useful pedagogical tool."
+"I've been teaching poetry and lyrical analysis for over 25 years, and this tool genuinely impressed me. I tested it with Bob Dylan's catalog and was struck by how the LDA topic modeling surfaced thematic threads I discuss in my 'Music as Literature' seminar—protest, mortality, romantic disillusionment. The sentiment tracking across albums mirrors what I've always argued: artists evolve. My one critique is I'd love to see more granular emotion categories beyond positive/negative. Still, I've already shared this with my graduate students. A remarkably useful pedagogical tool."
 
 **Rating: 4.5/5**
 
@@ -61,3 +65,49 @@
 "OKAY SO I made a tiktok about this and it lowkey blew up?? i put in lana del rey and the themes it found were like 'american dreams' 'toxic love' 'nostalgia' and the comments were going crazy bc its so accurate. the sentiment thing said her music is mostly melancholic which like. obviously. but seeing the DATA is satisfying idk. i've been doing a series now where i analyze different artists and compare the vibes. this app is content GOLD. pls never take this down i need it for my brand"
 
 **Rating: 5/5**
+
+---
+
+## Carlos Mendez, 38 — Licensed Music Therapist
+
+"In my practice, I work with adolescents processing trauma, and music is often their primary emotional outlet. This tool has become unexpectedly valuable for clinical work. When a client tells me they connect deeply with an artist, I can run an analysis to understand the thematic and emotional landscape they're drawn to. The positive/negative passage extraction is particularly useful—it helps me identify potentially activating content before sessions. I'd love to see integration of validated psychological frameworks, but as a free screening tool, it's remarkably thoughtful."
+
+**Rating: 4.5/5**
+
+---
+
+## Kenji Tanaka, 45 — Record Store Owner (Tokyo, relocated to Portland)
+
+"I moved from Shibuya to Portland ten years ago and opened my shop. Customers always asking me 'what's this album about?' and sometimes I don't know—especially newer artists. Now I run albums through this before putting them on the recommended shelf. Helps me write better staff picks. Only problem: doesn't work well with Japanese lyrics, only English. Makes sense but still disappointing. Would be amazing to see support for other languages someday. For English music though, very useful tool. Practical."
+
+**Rating: 3.5/5**
+
+---
+
+## Destiny "DJ Nebula" Washington, 31 — Electronic Producer & Club DJ
+
+"I mostly work with instrumental stuff, but I've been getting into producing for vocalists lately. This app helped me understand what lyrical themes work with different moods—like I analyzed a bunch of downtempo albums and noticed recurring patterns that I now reference when briefing vocalists. Unexpected use case but it works. The comparison feature is perfect for mood-matching. Wish it could analyze spoken word or samples too, but that's probably asking a lot. Clean interface, no ads, no signup wall. Respect."
+
+**Rating: 4/5**
+
+---
+
+## Professor Harold Finch, 67 — Philosophy Department, Skeptic
+
+"My graduate student insisted I try this, claiming it would 'revolutionize' textual analysis. I remain unconvinced of its scholarly utility. The LDA implementation produces plausible-looking clusters, but topic modeling on documents as short as song lyrics is methodologically questionable at best. The sentiment analysis—binary positive/negative—flattens the rich emotional texture of poetic language. That said, for what it is—a demonstration of accessible NLP—it functions adequately. I would not cite it in peer-reviewed work, but I can see pedagogical value in showing students how computational approaches both illuminate and obscure meaning."
+
+**Rating: 3/5**
+
+---
+
+## Summary
+
+| Metric | Value |
+|--------|-------|
+| Average Rating | 4.1/5 |
+| Total Reviews | 12 |
+| Would Recommend | 11/12 |
+
+**Most Praised:** Theme discovery, sentiment tracking, clean interface, comparison feature
+
+**Common Requests:** More emotion categories, non-English support, export functionality

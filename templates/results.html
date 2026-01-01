@@ -63,10 +63,17 @@ block content %}
       <div class="step-icon-wrapper">
         <span class="step-icon">○</span>
       </div>
-      <span class="step-label">Bonus Analysis</span>
+      <span class="step-label">Emotions</span>
     </div>
     <div class="step-connector"></div>
     <div class="step" data-step="6">
+      <div class="step-icon-wrapper">
+        <span class="step-icon">○</span>
+      </div>
+      <span class="step-label">Bonus Analysis</span>
+    </div>
+    <div class="step-connector"></div>
+    <div class="step" data-step="7">
       <div class="step-icon-wrapper">
         <span class="step-icon">○</span>
       </div>
@@ -91,10 +98,8 @@ block content %}
   <section class="result-card summary-card">
     <div class="summary-content">
       <p>
-        This analysis examines the lyrical content of the album using natural
-        language processing. Below you'll find sentiment scores for each track,
-        the most common words, recurring thematic elements, and AI-discovered
-        topic clusters.
+        Sentiment scores, emotional profile, recurring themes, and topic clusters
+        discovered from the album's lyrics.
       </p>
     </div>
   </section>
@@ -124,6 +129,19 @@ block content %}
         </div>
         <div id="song-chart" class="bar-chart"></div>
       </div>
+    </div>
+  </section>
+
+  <!-- Emotions Section -->
+  <section id="emotions-section" class="result-card">
+    <h2>Emotional Profile</h2>
+    <p class="section-description">
+      Granular emotional analysis using NRC emotion lexicon. Shows the distribution
+      of eight distinct emotions across all lyrics.
+    </p>
+    <div class="emotions-container">
+      <div id="dominant-emotion" class="dominant-emotion"></div>
+      <div id="emotions-chart" class="emotions-chart"></div>
     </div>
   </section>
 

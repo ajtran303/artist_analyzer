@@ -103,6 +103,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     // Render sentiment comparison
     renderSentiment(resultsA, resultsB);
 
+    // Render emotional profile comparison
+    renderEmotions(resultsA, resultsB);
+
     // Render vocabulary comparison
     renderVocabulary(resultsA, resultsB);
 
@@ -190,6 +193,79 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     renderTrackBars("tracks-a", songsA, "album-a");
     renderTrackBars("tracks-b", songsB, "album-b");
+  }
+
+  function renderEmotions(resultsA, resultsB) {
+    const emotionsA = resultsA.emotions || {};
+    const emotionsB = resultsB.emotions || {};
+
+    // Dominant emotions
+    const dominantAEl = document.getElementById("dominant-a");
+    const dominantBEl = document.getElementById("dominant-b");
+
+    if (emotionsA.dominant_emotion) {
+      dominantAEl.textContent = emotionsA.dominant_emotion.charAt(0).toUpperCase() +
+        emotionsA.dominant_emotion.slice(1);
+    }
+    if (emotionsB.dominant_emotion) {
+      dominantBEl.textContent = emotionsB.dominant_emotion.charAt(0).toUpperCase() +
+        emotionsB.dominant_emotion.slice(1);
+    }
+
+    // Face-off cards for each emotion
+    const container = document.getElementById("emotions-bars");
+    const overallA = emotionsA.overall || {};
+    const overallB = emotionsB.overall || {};
+
+    const emotions = ['joy', 'trust', 'anticipation', 'surprise', 'fear', 'sadness', 'anger', 'disgust'];
+
+    container.innerHTML = emotions.map(emotion => {
+      const valueA = overallA[emotion] || 0;
+      const valueB = overallB[emotion] || 0;
+      const diff = Math.abs(valueA - valueB);
+
+      let winner = '';
+      let winnerClass = '';
+      if (diff > 2) {
+        if (valueA > valueB) {
+          winner = 'A';
+          winnerClass = 'winner-a';
+        } else {
+          winner = 'B';
+          winnerClass = 'winner-b';
+        }
+      }
+
+      const emotionClass = getEmotionClass(emotion);
+
+      return `
+        <div class="emotion-faceoff ${emotionClass} ${winnerClass}">
+          <div class="faceoff-header">
+            <span class="faceoff-emotion">${emotion}</span>
+          </div>
+          <div class="faceoff-scores">
+            <span class="faceoff-score ${winner === 'A' ? 'winner' : ''} album-a-color">${valueA.toFixed(1)}%</span>
+            <span class="faceoff-vs">vs</span>
+            <span class="faceoff-score ${winner === 'B' ? 'winner' : ''} album-b-color">${valueB.toFixed(1)}%</span>
+          </div>
+          ${winner ? `<div class="faceoff-result ${winnerClass}">Album ${winner}</div>` : '<div class="faceoff-result tie">Tie</div>'}
+        </div>
+      `;
+    }).join("");
+  }
+
+  function getEmotionClass(emotion) {
+    const classes = {
+      joy: "emotion-positive",
+      trust: "emotion-positive",
+      anticipation: "emotion-neutral",
+      surprise: "emotion-neutral",
+      fear: "emotion-negative",
+      sadness: "emotion-negative",
+      anger: "emotion-negative",
+      disgust: "emotion-negative"
+    };
+    return classes[emotion] || "emotion-neutral";
   }
 
   function renderTrackBars(containerId, songs, albumClass) {

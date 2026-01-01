@@ -29,6 +29,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=builder /app/wheels /wheels
 RUN pip install --no-cache /wheels/*
 
+# Install NRCLex separately (has broken 'collections' dependency in metadata)
+RUN pip install --no-cache-dir --no-deps nrclex==3.0.0
+
 # Download NLTK data
 RUN python -c "import nltk; nltk.download('punkt'); nltk.download('punkt_tab'); nltk.download('stopwords')"
 

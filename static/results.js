@@ -110,7 +110,7 @@ document.addEventListener("DOMContentLoaded", function () {
         statusText.textContent = data.progress || getStatusMessage(data.status);
         updateProgress(
           data.stage || 0,
-          data.total_stages || 6,
+          data.total_stages || 7,
           data.sub_current,
           data.sub_total
         );
@@ -211,6 +211,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Render most emotional passages (positive and negative)
     renderEmotionalPassages(results.stats?.emotional_passages);
+
+    // Render emotions profile
+    renderEmotions(results.emotions);
 
     // Render word frequency
     renderWordFrequency(results.word_frequency || []);
@@ -400,6 +403,80 @@ document.addEventListener("DOMContentLoaded", function () {
     const div = document.createElement("div");
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  function renderEmotions(emotions) {
+    const container = document.getElementById("emotions-chart");
+    const dominantEl = document.getElementById("dominant-emotion");
+    const section = document.getElementById("emotions-section");
+
+    if (!emotions || !emotions.overall) {
+      section.classList.add("hidden");
+      return;
+    }
+
+    section.classList.remove("hidden");
+
+    // Show dominant emotion
+    if (emotions.dominant_emotion) {
+      const emotionIcons = {
+        joy: "^_^",
+        trust: "<3",
+        fear: ":O",
+        surprise: ":!",
+        sadness: ":(",
+        disgust: ">_<",
+        anger: ">:(",
+        anticipation: "..."
+      };
+      const icon = emotionIcons[emotions.dominant_emotion] || "*";
+      dominantEl.innerHTML = `
+        <span class="dominant-label">Dominant Emotion</span>
+        <span class="dominant-value">
+          <span class="emotion-icon">${icon}</span>
+          ${emotions.dominant_emotion.charAt(0).toUpperCase() + emotions.dominant_emotion.slice(1)}
+        </span>
+      `;
+    }
+
+    // Render emotion bars
+    container.innerHTML = "";
+    const overall = emotions.overall;
+    const maxValue = Math.max(...Object.values(overall), 1);
+
+    // Sort emotions by value descending
+    const sortedEmotions = Object.entries(overall)
+      .sort((a, b) => b[1] - a[1]);
+
+    sortedEmotions.forEach(([emotion, value]) => {
+      const percentage = (value / maxValue) * 100;
+      const emotionClass = getEmotionClass(emotion);
+
+      const html = `
+        <div class="emotion-bar-item">
+          <span class="emotion-label">${emotion}</span>
+          <div class="emotion-bar-wrapper">
+            <div class="emotion-bar ${emotionClass}" style="width: ${percentage}%"></div>
+          </div>
+          <span class="emotion-value">${value.toFixed(1)}%</span>
+        </div>
+      `;
+      container.innerHTML += html;
+    });
+  }
+
+  function getEmotionClass(emotion) {
+    const classes = {
+      joy: "emotion-positive",
+      trust: "emotion-positive",
+      anticipation: "emotion-neutral",
+      surprise: "emotion-neutral",
+      fear: "emotion-negative",
+      sadness: "emotion-negative",
+      anger: "emotion-negative",
+      disgust: "emotion-negative"
+    };
+    return classes[emotion] || "emotion-neutral";
   }
 
   function setupSortToggle() {

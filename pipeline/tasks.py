@@ -47,6 +47,7 @@ def analyze_album_async(self, album_id: int, album_name: str, analysis_id: int, 
     from pipeline.lda_analyzer import run_lda, assign_topics_to_songs
     from pipeline.sentiment_analyzer import run_sentiment, find_most_emotional_passages
     from pipeline.bonus_analyzer import analyze_word_frequency, analyze_metaphors, analyze_vocabulary_richness
+    from pipeline.emotion_analyzer import analyze_emotions
 
     app = create_app()
 
@@ -62,7 +63,7 @@ def analyze_album_async(self, album_id: int, album_name: str, analysis_id: int, 
                 artist_name = analysis.artist_name
 
             # Stage 1: Scraping
-            logger.info(f"========== STAGE 1/6: SCRAPING ==========")
+            logger.info(f"========== STAGE 1/7: SCRAPING ==========")
             self.update_state(state='PROGRESS', meta={'progress': 'Fetching lyrics...'})
             analysis.update_status('processing', 'Fetching lyrics...')
 
@@ -83,14 +84,14 @@ def analyze_album_async(self, album_id: int, album_name: str, analysis_id: int, 
             total_tracks = scrape_result.get('total_tracks', len(songs_data))
 
             # Stage 2: Preprocessing
-            logger.info(f"========== STAGE 2/6: PREPROCESSING ==========")
+            logger.info(f"========== STAGE 2/7: PREPROCESSING ==========")
             self.update_state(state='PROGRESS', meta={'progress': 'Preprocessing lyrics...'})
             analysis.update_status('processing', 'Preprocessing lyrics...')
 
             processed_songs = preprocess_lyrics(songs_data)
 
             # Stage 3: LDA Analysis
-            logger.info(f"========== STAGE 3/6: LDA TOPIC MODELING ==========")
+            logger.info(f"========== STAGE 3/7: LDA TOPIC MODELING ==========")
             self.update_state(state='PROGRESS', meta={'progress': 'Running LDA topic analysis...'})
             analysis.update_status('processing', 'Running LDA topic analysis...')
 
@@ -100,7 +101,7 @@ def analyze_album_async(self, album_id: int, album_name: str, analysis_id: int, 
             processed_songs = assign_topics_to_songs(processed_songs)
 
             # Stage 4: Sentiment Analysis
-            logger.info(f"========== STAGE 4/6: SENTIMENT ANALYSIS ==========")
+            logger.info(f"========== STAGE 4/7: SENTIMENT ANALYSIS ==========")
             self.update_state(state='PROGRESS', meta={'progress': 'Analyzing sentiment...'})
             analysis.update_status('processing', 'Analyzing sentiment...')
 
@@ -110,8 +111,15 @@ def analyze_album_async(self, album_id: int, album_name: str, analysis_id: int, 
             # Find most emotional passages (both positive and negative)
             emotional_passages = find_most_emotional_passages(processed_songs)
 
-            # Stage 5: Bonus Analyses
-            logger.info(f"========== STAGE 5/6: BONUS ANALYSES ==========")
+            # Stage 5: Emotion Analysis
+            logger.info(f"========== STAGE 5/7: EMOTION ANALYSIS ==========")
+            self.update_state(state='PROGRESS', meta={'progress': 'Analyzing emotions...'})
+            analysis.update_status('processing', 'Analyzing emotions...')
+
+            emotions_result = analyze_emotions(processed_songs)
+
+            # Stage 6: Bonus Analyses
+            logger.info(f"========== STAGE 6/7: BONUS ANALYSES ==========")
             self.update_state(state='PROGRESS', meta={'progress': 'Running bonus analyses...'})
             analysis.update_status('processing', 'Running bonus analyses...')
 
@@ -119,8 +127,8 @@ def analyze_album_async(self, album_id: int, album_name: str, analysis_id: int, 
             metaphors = analyze_metaphors(processed_songs)
             vocab_stats = analyze_vocabulary_richness(processed_songs)
 
-            # Stage 6: Save to Database
-            logger.info(f"========== STAGE 6/6: SAVING RESULTS ==========")
+            # Stage 7: Save to Database
+            logger.info(f"========== STAGE 7/7: SAVING RESULTS ==========")
             self.update_state(state='PROGRESS', meta={'progress': 'Saving results...'})
             analysis.update_status('processing', 'Saving results...')
 
@@ -170,6 +178,7 @@ def analyze_album_async(self, album_id: int, album_name: str, analysis_id: int, 
                     'by_song': songs_sentiment,
                     'overall': sentiment_results['overall']
                 },
+                'emotions': emotions_result,
                 'word_frequency': word_frequency[:15],
                 'metaphors': metaphors,
                 'stats': {
