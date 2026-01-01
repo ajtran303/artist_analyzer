@@ -43,6 +43,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const compareBanner = document.getElementById("compare-banner");
   const compareAlbumName = document.getElementById("compare-album-name");
   const cancelCompareBtn = document.getElementById("cancel-compare");
+  const searchSection = document.getElementById("search-section");
 
   // Analysis progress elements (for compare mode)
   const analysisSection = document.getElementById("analysis-section");
@@ -664,7 +665,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Analysis progress for compare mode
   function showAnalysisProgress(jobId) {
-    // Hide other sections
+    // Hide other sections - only show progress when analyzing second album
+    searchSection.classList.add("hidden");
     albumSection.classList.add("hidden");
     albumSearchResultsSection.classList.add("hidden");
     compareBanner.classList.add("hidden");
@@ -701,6 +703,8 @@ document.addEventListener("DOMContentLoaded", function () {
         clearInterval(analysisPollInterval);
         clearInterval(analysisFunFactInterval);
         analysisSection.classList.add("hidden");
+        searchSection.classList.remove("hidden");
+        compareBanner.classList.remove("hidden");
         showError(data.error || "Analysis failed");
       } else {
         // Still processing
