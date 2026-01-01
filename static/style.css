@@ -2323,6 +2323,7 @@ body {
 /* Emotions comparison */
 .emotions-comparison {
   padding: 0.5rem 0;
+  overflow-x: auto;
 }
 
 .dominant-compare {
@@ -2368,7 +2369,13 @@ body {
   gap: 0.75rem;
 }
 
-@media (min-width: 600px) {
+@media (max-width: 420px) {
+  .emotions-compare-chart {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 768px) {
   .emotions-compare-chart {
     grid-template-columns: repeat(4, 1fr);
   }
@@ -2380,6 +2387,7 @@ body {
   padding: 0.75rem;
   text-align: center;
   transition: border-color 0.2s, box-shadow 0.2s;
+  min-width: 0;
 }
 
 .emotion-faceoff.winner-a {
