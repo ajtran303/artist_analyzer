@@ -221,36 +221,31 @@ class TestCleanArtistName:
 class TestSearchAlbums:
     """Tests for search_albums function in discogs_client."""
 
-    @patch('pipeline.discogs_client._get_client')
-    def test_returns_correct_structure(self, mock_get_client):
+    @patch('pipeline.discogs_client.requests.get')
+    def test_returns_correct_structure(self, mock_get):
         """Returns correct structure with albums list and pagination."""
-        mock_client = MagicMock()
-        mock_get_client.return_value = mock_client
-
-        # Mock search results - use spec_set to properly set .name attribute
-        mock_artist1 = MagicMock()
-        mock_artist1.name = 'The Cure'
-        mock_master1 = MagicMock()
-        mock_master1.id = 12345
-        mock_master1.title = 'Disintegration'
-        mock_master1.year = 1989
-        mock_master1.artists = [mock_artist1]
-
-        mock_artist2 = MagicMock()
-        mock_artist2.name = 'Monolord'
-        mock_master2 = MagicMock()
-        mock_master2.id = 67890
-        mock_master2.title = 'Disintegration'
-        mock_master2.year = 2014
-        mock_master2.artists = [mock_artist2]
-
-        mock_results = MagicMock()
-        mock_results.__iter__ = lambda self: iter([mock_master1, mock_master2])
-        mock_results.__len__ = lambda self: 2
-        mock_results.pages = 1
-        mock_results.page = 1
-
-        mock_client.search.return_value = mock_results
+        # Mock the API response
+        mock_response = MagicMock()
+        mock_response.ok = True
+        mock_response.json.return_value = {
+            'results': [
+                {
+                    'id': 12345,
+                    'title': 'The Cure - Disintegration',
+                    'year': 1989,
+                },
+                {
+                    'id': 67890,
+                    'title': 'Monolord - Disintegration',
+                    'year': 2014,
+                }
+            ],
+            'pagination': {
+                'pages': 1,
+                'page': 1
+            }
+        }
+        mock_get.return_value = mock_response
 
         result = search_albums('Disintegration')
 
@@ -263,72 +258,68 @@ class TestSearchAlbums:
         assert result['albums'][0]['artist'] == 'The Cure'
         assert result['albums'][0]['year'] == 1989
 
-    @patch('pipeline.discogs_client._get_client')
-    def test_returns_empty_if_no_results(self, mock_get_client):
+    @patch('pipeline.discogs_client.requests.get')
+    def test_returns_empty_if_no_results(self, mock_get):
         """Returns empty albums list if no results found."""
-        mock_client = MagicMock()
-        mock_get_client.return_value = mock_client
-
-        mock_results = MagicMock()
-        mock_results.__iter__ = lambda self: iter([])
-        mock_results.__len__ = lambda self: 0
-        mock_results.pages = 0
-        mock_results.page = 1
-
-        mock_client.search.return_value = mock_results
+        mock_response = MagicMock()
+        mock_response.ok = True
+        mock_response.json.return_value = {
+            'results': [],
+            'pagination': {
+                'pages': 0,
+                'page': 1
+            }
+        }
+        mock_get.return_value = mock_response
 
         result = search_albums('Nonexistent Album Title XYZ')
 
         assert result['albums'] == []
         assert result['has_more'] is False
 
-    @patch('pipeline.discogs_client._get_client')
-    def test_cleans_artist_name_in_results(self, mock_get_client):
+    @patch('pipeline.discogs_client.requests.get')
+    def test_cleans_artist_name_in_results(self, mock_get):
         """Artist names are cleaned of disambiguation numbers."""
-        mock_client = MagicMock()
-        mock_get_client.return_value = mock_client
-
-        mock_artist = MagicMock()
-        mock_artist.name = 'Will Wood (7)'
-        mock_master = MagicMock()
-        mock_master.id = 11111
-        mock_master.title = 'Test Album'
-        mock_master.year = 2020
-        mock_master.artists = [mock_artist]
-
-        mock_results = MagicMock()
-        mock_results.__iter__ = lambda self: iter([mock_master])
-        mock_results.__len__ = lambda self: 1
-        mock_results.pages = 1
-        mock_results.page = 1
-
-        mock_client.search.return_value = mock_results
+        mock_response = MagicMock()
+        mock_response.ok = True
+        mock_response.json.return_value = {
+            'results': [
+                {
+                    'id': 11111,
+                    'title': 'Will Wood (7) - Test Album',
+                    'year': 2020,
+                }
+            ],
+            'pagination': {
+                'pages': 1,
+                'page': 1
+            }
+        }
+        mock_get.return_value = mock_response
 
         result = search_albums('Test Album')
 
         assert result['albums'][0]['artist'] == 'Will Wood'
 
-    @patch('pipeline.discogs_client._get_client')
-    def test_handles_pagination(self, mock_get_client):
+    @patch('pipeline.discogs_client.requests.get')
+    def test_handles_pagination(self, mock_get):
         """Handles pagination with has_more and next_page."""
-        mock_client = MagicMock()
-        mock_get_client.return_value = mock_client
-
-        mock_artist = MagicMock()
-        mock_artist.name = 'Artist'
-        mock_master = MagicMock()
-        mock_master.id = 12345
-        mock_master.title = 'Album'
-        mock_master.year = 2020
-        mock_master.artists = [mock_artist]
-
-        mock_results = MagicMock()
-        mock_results.__iter__ = lambda self: iter([mock_master])
-        mock_results.__len__ = lambda self: 1
-        mock_results.pages = 3
-        mock_results.page = 1
-
-        mock_client.search.return_value = mock_results
+        mock_response = MagicMock()
+        mock_response.ok = True
+        mock_response.json.return_value = {
+            'results': [
+                {
+                    'id': 12345,
+                    'title': 'Artist - Album',
+                    'year': 2020,
+                }
+            ],
+            'pagination': {
+                'pages': 3,
+                'page': 1
+            }
+        }
+        mock_get.return_value = mock_response
 
         result = search_albums('Album', page=1)
 
@@ -336,60 +327,59 @@ class TestSearchAlbums:
         assert result['next_page'] == 2
         assert result['page'] == 1
 
-    @patch('pipeline.discogs_client._get_client')
-    def test_returns_empty_on_exception(self, mock_get_client):
+    @patch('pipeline.discogs_client.requests.get')
+    def test_returns_empty_on_exception(self, mock_get):
         """Returns empty result on API exception."""
-        mock_get_client.side_effect = Exception("API Error")
+        mock_get.side_effect = Exception("API Error")
 
         result = search_albums('Test Album')
 
         assert result['albums'] == []
         assert result['has_more'] is False
 
-    @patch('pipeline.discogs_client._get_client')
-    def test_handles_missing_artist(self, mock_get_client):
+    @patch('pipeline.discogs_client.requests.get')
+    def test_handles_missing_artist(self, mock_get):
         """Handles albums without artist information."""
-        mock_client = MagicMock()
-        mock_get_client.return_value = mock_client
-
-        mock_master = MagicMock()
-        mock_master.id = 12345
-        mock_master.title = 'Various Artists Compilation'
-        mock_master.year = 2020
-        mock_master.artists = []
-
-        mock_results = MagicMock()
-        mock_results.__iter__ = lambda self: iter([mock_master])
-        mock_results.__len__ = lambda self: 1
-        mock_results.pages = 1
-        mock_results.page = 1
-
-        mock_client.search.return_value = mock_results
+        mock_response = MagicMock()
+        mock_response.ok = True
+        mock_response.json.return_value = {
+            'results': [
+                {
+                    'id': 12345,
+                    'title': 'Various Artists Compilation',  # No " - " separator
+                    'year': 2020,
+                }
+            ],
+            'pagination': {
+                'pages': 1,
+                'page': 1
+            }
+        }
+        mock_get.return_value = mock_response
 
         result = search_albums('Various Artists Compilation')
 
         assert result['albums'][0]['artist'] == ''
 
-    @patch('pipeline.discogs_client._get_client')
-    def test_extracts_artist_from_title(self, mock_get_client):
+    @patch('pipeline.discogs_client.requests.get')
+    def test_extracts_artist_from_title(self, mock_get):
         """Extracts artist from 'Artist - Album' title format."""
-        mock_client = MagicMock()
-        mock_get_client.return_value = mock_client
-
-        # Simulate search result with artist in title (common Discogs format)
-        mock_master = MagicMock()
-        mock_master.id = 12345
-        mock_master.title = 'Abnormity (2) - Irreversible Disintegration'
-        mock_master.year = 2010
-        mock_master.artists = []  # Empty artists list
-
-        mock_results = MagicMock()
-        mock_results.__iter__ = lambda self: iter([mock_master])
-        mock_results.__len__ = lambda self: 1
-        mock_results.pages = 1
-        mock_results.page = 1
-
-        mock_client.search.return_value = mock_results
+        mock_response = MagicMock()
+        mock_response.ok = True
+        mock_response.json.return_value = {
+            'results': [
+                {
+                    'id': 12345,
+                    'title': 'Abnormity (2) - Irreversible Disintegration',
+                    'year': 2010,
+                }
+            ],
+            'pagination': {
+                'pages': 1,
+                'page': 1
+            }
+        }
+        mock_get.return_value = mock_response
 
         result = search_albums('Irreversible Disintegration')
 
