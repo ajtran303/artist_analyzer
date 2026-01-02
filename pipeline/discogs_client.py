@@ -12,21 +12,26 @@ logger = logging.getLogger(__name__)
 
 def clean_artist_name(name):
     """
-    Remove Discogs disambiguation numbers from artist names.
+    Remove Discogs-specific markers from artist names.
 
-    Discogs adds numbers in parentheses to distinguish artists with the same name,
-    e.g., "Will Wood (7)" or "The National (2)".
+    Discogs adds:
+    - Numbers in parentheses to distinguish artists with the same name,
+      e.g., "Will Wood (7)" or "The National (2)"
+    - Asterisks (*) to indicate Artist Name Variations (ANV),
+      e.g., "DJ Snake And Lil Jon*"
 
     Args:
-        name: Artist name possibly containing disambiguation number
+        name: Artist name possibly containing Discogs markers
 
     Returns:
-        Cleaned artist name without disambiguation number
+        Cleaned artist name without Discogs markers
     """
     if not name:
         return name
-    # Match " (number)" at the end of the string
+    # Remove " (number)" at the end of the string (disambiguation)
     cleaned = re.sub(r'\s*\(\d+\)\s*$', '', name)
+    # Remove trailing asterisk (ANV marker)
+    cleaned = cleaned.rstrip('*')
     return cleaned.strip()
 
 DISCOGS_TOKEN = os.environ.get('DISCOGS_API_TOKEN', '')

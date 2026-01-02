@@ -59,6 +59,22 @@ class TestCleanArtistName:
         result = clean_artist_name('Artist (UK)')
         assert result == 'Artist (UK)'
 
+    def test_removes_trailing_asterisk(self):
+        """Removes trailing asterisk (ANV marker)."""
+        assert clean_artist_name('DJ Snake And Lil Jon*') == 'DJ Snake And Lil Jon'
+
+    def test_removes_multiple_trailing_asterisks(self):
+        """Removes multiple trailing asterisks."""
+        assert clean_artist_name('Artist**') == 'Artist'
+
+    def test_removes_asterisk_and_disambiguation(self):
+        """Removes both asterisk and disambiguation number."""
+        assert clean_artist_name('Artist* (5)') == 'Artist'
+
+    def test_preserves_mid_string_asterisk(self):
+        """Preserves asterisk in middle of string."""
+        assert clean_artist_name('A*Teens') == 'A*Teens'
+
 
 @pytest.mark.unit
 class TestDiscogsError:
