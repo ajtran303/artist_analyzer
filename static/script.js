@@ -88,6 +88,14 @@ document.addEventListener("DOMContentLoaded", function () {
   // Check for compare mode on load
   initCompareMode();
 
+  // Handle browser back/forward navigation (bfcache restoration)
+  window.addEventListener("pageshow", function (event) {
+    if (event.persisted) {
+      // Page was restored from bfcache - reset analysis state
+      resetPageState();
+    }
+  });
+
   // Tab switching
   tabBtns.forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -775,6 +783,31 @@ document.addEventListener("DOMContentLoaded", function () {
     button.disabled = false;
     button.querySelector(".btn-text").classList.remove("hidden");
     button.querySelector(".btn-loading").classList.add("hidden");
+  }
+
+  function resetPageState() {
+    // Reset analysis state
+    isAnalyzing = false;
+
+    // Reset all album items in both grids
+    document.querySelectorAll(".album-item").forEach((item) => {
+      item.classList.remove("selected");
+      const actionDiv = item.querySelector(".album-action");
+      if (actionDiv) {
+        actionDiv.classList.add("hidden");
+      }
+      const btn = item.querySelector(".analyze-album-btn");
+      if (btn) {
+        btn.disabled = false;
+        const btnText = btn.querySelector(".btn-text");
+        const btnLoading = btn.querySelector(".btn-loading");
+        if (btnText) btnText.classList.remove("hidden");
+        if (btnLoading) btnLoading.classList.add("hidden");
+      }
+    });
+
+    // Reset selected album state
+    selectedAlbum = null;
   }
 
   function setSearchLoading(loading) {
