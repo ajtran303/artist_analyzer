@@ -6,6 +6,7 @@ import requests
 
 from pipeline.discogs_client import (
     clean_artist_name,
+    extract_primary_artist,
     search_artist,
     get_artist_albums,
     get_release_tracks,
@@ -74,6 +75,80 @@ class TestCleanArtistName:
     def test_preserves_mid_string_asterisk(self):
         """Preserves asterisk in middle of string."""
         assert clean_artist_name('A*Teens') == 'A*Teens'
+
+
+@pytest.mark.unit
+class TestExtractPrimaryArtist:
+    """Tests for extract_primary_artist function."""
+
+    def test_returns_none_for_none(self):
+        """Returns None for None input."""
+        assert extract_primary_artist(None) is None
+
+    def test_returns_empty_for_empty(self):
+        """Returns empty string for empty input."""
+        assert extract_primary_artist('') == ''
+
+    def test_simple_artist_unchanged(self):
+        """Simple artist name passes through unchanged."""
+        assert extract_primary_artist('Radiohead') == 'Radiohead'
+
+    def test_removes_featuring(self):
+        """Removes 'Featuring' and everything after."""
+        result = extract_primary_artist('Lil Josh & Ernest Featuring Hurricane Chris')
+        assert result == 'Lil Josh & Ernest'
+
+    def test_removes_featuring_case_insensitive(self):
+        """Removes 'featuring' case-insensitively."""
+        assert extract_primary_artist('Artist featuring Other') == 'Artist'
+        assert extract_primary_artist('Artist FEATURING Other') == 'Artist'
+
+    def test_removes_feat_dot(self):
+        """Removes 'Feat.' and everything after."""
+        assert extract_primary_artist('Artist Feat. Other Artist') == 'Artist'
+
+    def test_removes_feat_no_dot(self):
+        """Removes 'Feat' (no dot) and everything after."""
+        assert extract_primary_artist('Artist Feat Other Artist') == 'Artist'
+
+    def test_removes_ft_dot(self):
+        """Removes 'ft.' and everything after."""
+        assert extract_primary_artist('Artist ft. Other') == 'Artist'
+
+    def test_removes_ft_no_dot(self):
+        """Removes 'ft' (no dot) and everything after."""
+        assert extract_primary_artist('Artist ft Other') == 'Artist'
+
+    def test_handles_split_release(self):
+        """Extracts first artist from split release."""
+        assert extract_primary_artist('Bikini Kill / Huggy Bear') == 'Bikini Kill'
+
+    def test_preserves_ac_dc(self):
+        """Does not split AC/DC (no spaces around slash)."""
+        assert extract_primary_artist('AC/DC') == 'AC/DC'
+
+    def test_handles_multiple_slashes(self):
+        """Takes first artist from multiple split."""
+        assert extract_primary_artist('Artist A / Artist B / Artist C') == 'Artist A'
+
+    def test_cleans_discogs_markers_first(self):
+        """Cleans Discogs markers before extracting."""
+        result = extract_primary_artist('Artist (5) Featuring Other*')
+        assert result == 'Artist'
+
+    def test_combined_featuring_and_disambiguation(self):
+        """Handles both disambiguation and featuring."""
+        result = extract_primary_artist('Lil Josh & Ernest (13) Featuring Hurricane Chris')
+        assert result == 'Lil Josh & Ernest'
+
+    def test_preserves_ampersand_groups(self):
+        """Preserves '&' in group names (doesn't split on &)."""
+        assert extract_primary_artist('Lil Jon & The East Side Boyz') == 'Lil Jon & The East Side Boyz'
+
+    def test_split_with_featuring(self):
+        """Handles both split release and featuring."""
+        result = extract_primary_artist('Artist A / Artist B Featuring Other')
+        assert result == 'Artist A'
 
 
 @pytest.mark.unit

@@ -60,6 +60,52 @@ class TestInputValidation:
             # or accepted with sanitized name
             assert response.status_code in [400, 202]
 
+    def test_accepts_ampersand_in_artist_name(self, client, db_session):
+        """Accepts ampersand in artist name (e.g., 'Lil Jon & The East Side Boyz')."""
+        from urllib.parse import urlencode
+
+        with patch('pipeline.scraper.search_artist_albums') as mock_search:
+            mock_search.return_value = {
+                'artist_id': 12345,
+                'artist_name': 'Lil Jon & The East Side Boyz',
+                'albums': [],
+                'has_more': False
+            }
+            # Properly URL-encode the query parameter
+            query_string = urlencode({'q': 'Lil Jon & The East Side Boyz'})
+            response = client.get(f'/api/artists/search?{query_string}')
+
+            # Should not be rejected for invalid characters
+            assert response.status_code == 200
+
+    def test_accepts_slash_in_artist_name(self, client, db_session):
+        """Accepts forward slash in artist name (e.g., 'AC/DC')."""
+        with patch('pipeline.scraper.search_artist_albums') as mock_search:
+            mock_search.return_value = {
+                'artist_id': 12345,
+                'artist_name': 'AC/DC',
+                'albums': [],
+                'has_more': False
+            }
+            response = client.get('/api/artists/search?q=AC/DC')
+
+            # Should not be rejected for invalid characters
+            assert response.status_code == 200
+
+    def test_accepts_parentheses_in_artist_name(self, client, db_session):
+        """Accepts parentheses in artist name (e.g., 'Sunn O)))')."""
+        with patch('pipeline.scraper.search_artist_albums') as mock_search:
+            mock_search.return_value = {
+                'artist_id': 12345,
+                'artist_name': 'Sunn O)))',
+                'albums': [],
+                'has_more': False
+            }
+            response = client.get('/api/artists/search?q=Sunn O)))')
+
+            # Should not be rejected for invalid characters
+            assert response.status_code == 200
+
     def test_rejects_invalid_job_id_format(self, client, db_session):
         """Rejects invalid job_id format."""
         # Use characters that are invalid but URL-safe (no angle brackets which confuse Flask routing)

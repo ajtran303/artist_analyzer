@@ -12,6 +12,7 @@ MUSIXMATCH_API_KEY = os.environ.get('MUSIXMATCH_API_KEY', '')
 
 # Import Discogs client functions
 from pipeline.discogs_client import (
+    extract_primary_artist,
     search_artist as discogs_search_artist,
     search_albums as discogs_search_albums,
     get_artist_albums as discogs_get_artist_albums,
@@ -271,6 +272,12 @@ def scrape_album(album_id, album_name=None, artist_name=None, progress_callback=
         else:
             album_year = None
 
+        # Clean artist name for lyrics search
+        # Removes "Featuring X", split release markers, Discogs disambiguation, etc.
+        search_artist_name = extract_primary_artist(artist_name) if artist_name else ''
+        if search_artist_name != artist_name:
+            logger.info(f"Normalized artist name for search: '{artist_name}' -> '{search_artist_name}'")
+
         # Get tracks from Discogs
         tracks = discogs_get_release_tracks(album_id, is_master=True)
         logger.info(f"Found {len(tracks)} tracks from Discogs")
@@ -283,7 +290,7 @@ def scrape_album(album_id, album_name=None, artist_name=None, progress_callback=
         total_tracks = len(tracks)
         for i, track in enumerate(tracks, 1):
             title = track.get('title', 'Unknown')
-            logger.info(f"[{i}/{total_tracks}] Fetching lyrics for: {artist_name} - {title}")
+            logger.info(f"[{i}/{total_tracks}] Fetching lyrics for: {search_artist_name} - {title}")
 
             # Report progress if callback provided
             if progress_callback:
@@ -294,13 +301,13 @@ def scrape_album(album_id, album_name=None, artist_name=None, progress_callback=
 
             # Try Musixmatch first (paid, best coverage)
             if MUSIXMATCH_API_KEY:
-                lyrics = _fetch_lyrics_musixmatch(artist_name, title)
+                lyrics = _fetch_lyrics_musixmatch(search_artist_name, title)
                 if lyrics:
                     source_url = 'musixmatch'
 
             # Try lyrics.ovh second (free API)
             if not lyrics:
-                lyrics = _fetch_lyrics_lyricsovh(artist_name, title)
+                lyrics = _fetch_lyrics_lyricsovh(search_artist_name, title)
                 if lyrics:
                     source_url = 'lyrics.ovh'
 

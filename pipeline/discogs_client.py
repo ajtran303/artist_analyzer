@@ -34,6 +34,44 @@ def clean_artist_name(name):
     cleaned = cleaned.rstrip('*')
     return cleaned.strip()
 
+
+def extract_primary_artist(name):
+    """
+    Extract the primary artist from complex artist credits.
+
+    Handles common patterns in album credits:
+    - "Artist Featuring Other" / "Artist Feat. Other" / "Artist ft. Other"
+    - "Artist / Other Artist" (split releases)
+    - "Artist & Other Artist" (collaborations - optional, disabled by default)
+
+    Args:
+        name: Artist credit string, possibly with collaborators
+
+    Returns:
+        Primary artist name
+    """
+    if not name:
+        return name
+
+    cleaned = name
+
+    # First remove "Featuring/Feat./ft." and everything after (case-insensitive)
+    # This must happen before cleaning Discogs markers since featuring may come after "(13)"
+    # Matches: "Featuring", "featuring", "Feat.", "feat.", "Ft.", "ft."
+    cleaned = re.split(r'\s+(?:featuring|feat\.?|ft\.?)\s+', cleaned, flags=re.IGNORECASE)[0]
+
+    # Handle split releases: "Artist / Other Artist" -> "Artist"
+    # Only split on " / " (with spaces) to avoid splitting "AC/DC"
+    if ' / ' in cleaned:
+        cleaned = cleaned.split(' / ')[0]
+
+    # Finally clean Discogs markers from the result
+    cleaned = clean_artist_name(cleaned)
+
+    return cleaned.strip()
+
+
+
 DISCOGS_TOKEN = os.environ.get('DISCOGS_API_TOKEN', '')
 
 

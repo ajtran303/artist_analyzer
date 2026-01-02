@@ -1,6 +1,7 @@
 """REST API endpoints with security measures."""
 
 import re
+import html
 import logging
 from flask import Blueprint, request, jsonify, current_app
 import bleach
@@ -50,15 +51,20 @@ def get_sub_progress(progress):
     return None, None
 
 
-ARTIST_NAME_PATTERN = re.compile(r'^[\w\s\-\.\'\&]+$', re.UNICODE)
+# Allow: letters, numbers, spaces, hyphens, periods, apostrophes, ampersands,
+# forward slashes (AC/DC), parentheses, commas, exclamation marks, question marks
+ARTIST_NAME_PATTERN = re.compile(r'^[\w\s\-\.\'\&/\(\),!?]+$', re.UNICODE)
 
 
 def sanitize_input(text):
     """Sanitize user input to prevent XSS."""
     if not text:
         return ''
-    # Strip HTML tags and limit length
+    # Strip HTML tags
     cleaned = bleach.clean(text, tags=[], strip=True)
+    # Unescape HTML entities (bleach converts & to &amp;, etc.)
+    # This is safe because we've already stripped all HTML tags
+    cleaned = html.unescape(cleaned)
     return cleaned.strip()
 
 
