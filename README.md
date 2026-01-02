@@ -6,6 +6,7 @@ A web application that analyzes song lyrics to discover hidden themes, track sen
 
 - **Topic Discovery**: Uses LDA (Latent Dirichlet Allocation) to uncover 5-8 hidden themes in album lyrics
 - **Sentiment Analysis**: Tracks emotional tone across songs using TextBlob
+- **Emotion Analysis**: Granular emotional breakdown using NRCLex (joy, sadness, anger, fear, trust, surprise, anticipation, disgust)
 - **Word Frequency**: Identifies most common words and vocabulary richness
 - **Metaphor Detection**: Finds recurring metaphorical themes (love, darkness, nature, etc.)
 - **Album Comparison**: Compare two albums side-by-side with sentiment, vocabulary, and shared theme analysis
@@ -19,6 +20,7 @@ A web application that analyzes song lyrics to discover hidden themes, track sen
 - **PostgreSQL** - Database for storing analysis results
 - **Gensim** - LDA topic modeling
 - **TextBlob/NLTK** - Sentiment analysis and text preprocessing
+- **NRCLex** - Emotion analysis
 
 ### Data Sources
 - **Discogs API** - Artist and album metadata, tracklists
@@ -34,7 +36,7 @@ A web application that analyzes song lyrics to discover hidden themes, track sen
 
 - Docker and Docker Compose
 - Discogs API token ([get one here](https://www.discogs.com/settings/developers))
-- Musixmatch API key (optional but recommended, [get one here](https://developer.musixmatch.com/))
+- Musixmatch API key (optional, [get one here](https://developer.musixmatch.com/)) - improves lyrics coverage
 
 ## Quick Start
 
@@ -51,9 +53,11 @@ A web application that analyzes song lyrics to discover hidden themes, track sen
 
 3. **Configure environment variables**
    ```env
-   # API Keys
-   DISCOGS_API_TOKEN=your_discogs_token
-   MUSIXMATCH_API_KEY=your_musixmatch_key  # Optional but recommended
+   # Required API Keys
+   DISCOGS_API_TOKEN=your_discogs_token  # Get from https://www.discogs.com/settings/developers
+
+   # Optional API Keys
+   MUSIXMATCH_API_KEY=your_musixmatch_key  # Better lyrics coverage
 
    # Security
    SECRET_KEY=your_secret_key_here
@@ -108,6 +112,7 @@ A web application that analyzes song lyrics to discover hidden themes, track sen
 5. **Analyze**:
    - LDA discovers latent topics
    - TextBlob calculates sentiment scores
+   - NRCLex analyzes emotions across 8 categories
    - Word frequency and metaphors are extracted
 6. **Display**: Results shown with interactive visualizations
 
@@ -126,7 +131,8 @@ artist-analyzer/
 │   ├── preprocessor.py    # Text preprocessing
 │   ├── lda_analyzer.py    # Topic modeling
 │   ├── sentiment_analyzer.py
-│   ├── bonus_analyzer.py  # Word freq & metaphors
+│   ├── emotion_analyzer.py   # NRCLex emotion analysis
+│   ├── bonus_analyzer.py     # Word freq & metaphors
 │   └── tasks.py           # Celery tasks
 ├── routes/
 │   ├── api.py             # REST API endpoints
@@ -173,7 +179,7 @@ python -c "import nltk; nltk.download('punkt'); nltk.download('stopwords'); nltk
 # Set environment variables
 export FLASK_ENV=development
 export DISCOGS_API_TOKEN=your_token
-export MUSIXMATCH_API_KEY=your_key  # Optional but recommended
+export MUSIXMATCH_API_KEY=your_key  # Optional, better lyrics coverage
 
 # Run Flask
 flask run
@@ -207,7 +213,7 @@ FLASK_ENV=production
 DATABASE_URL=postgresql://...
 REDIS_URL=redis://...
 DISCOGS_API_TOKEN=...
-MUSIXMATCH_API_KEY=...  # Optional but recommended
+MUSIXMATCH_API_KEY=...  # Optional, better lyrics coverage
 SECRET_KEY=...
 CORS_ORIGINS=https://yourdomain.com
 FORCE_HTTPS=true
