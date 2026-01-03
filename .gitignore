@@ -63,3 +63,4 @@ celerybeat-schedule
 celerybeat.pid
 
 CLAUDE.md
+REVIEWS.md
