@@ -197,10 +197,11 @@ pytest tests/ -v
 ## Security Features
 
 - CSRF protection on web forms
-- Rate limiting on API endpoints
+- Rate limiting on API endpoints (10 submissions/minute)
 - Input sanitization with Bleach
 - Security headers via Flask-Talisman (production)
 - Sensitive data filtering in logs
+- Circuit breaker on lyrics APIs (auto-skips failing providers after 5 consecutive failures)
 
 ## Deployment
 
@@ -224,6 +225,10 @@ FORCE_HTTPS=true
 - English lyrics only (sentiment analysis optimized for English)
 - Lyrics availability depends on coverage across Musixmatch and lyrics.ovh
 - Rate limits apply to external APIs
+
+## Roadmap
+
+- [ ] WebSockets instead of polling for job status
 
 ## License
 
