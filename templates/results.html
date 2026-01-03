@@ -11,14 +11,14 @@ block content %}
 </div>
 
 <!-- Toast notification -->
-<div id="toast" class="toast hidden">
+<div id="toast" class="toast hidden" role="alert" aria-live="assertive">
   <span id="toast-message"></span>
 </div>
 
-<div id="status-section" class="status-section">
+<div id="status-section" class="status-section" aria-live="polite">
   <div class="status-indicator">
-    <span class="spinner"></span>
-    <span id="status-text">Starting analysis...</span>
+    <span class="spinner" aria-hidden="true"></span>
+    <span id="status-text" role="status">Starting analysis...</span>
   </div>
 
   <!-- Progress Bar -->
@@ -122,9 +122,9 @@ block content %}
       <div class="chart-container full-width">
         <div class="chart-header">
           <h3 id="chart-title">Track Order</h3>
-          <div class="sort-toggle">
-            <button id="sort-track" class="sort-btn active">Track Order</button>
-            <button id="sort-sentiment" class="sort-btn">By Sentiment</button>
+          <div class="sort-toggle" role="group" aria-label="Sort options">
+            <button id="sort-track" class="sort-btn active" aria-pressed="true">Track Order</button>
+            <button id="sort-sentiment" class="sort-btn" aria-pressed="false">By Sentiment</button>
           </div>
         </div>
         <div id="song-chart" class="bar-chart"></div>
@@ -247,8 +247,8 @@ block content %}
   </div>
 </div>
 
-<div id="error-section" class="error-section hidden">
-  <div class="error-icon">!</div>
+<div id="error-section" class="error-section hidden" role="alert" aria-live="assertive">
+  <div class="error-icon" aria-hidden="true">!</div>
   <h2>Analysis Failed</h2>
   <p id="error-message"></p>
   <a href="/" class="btn">Try Again</a>

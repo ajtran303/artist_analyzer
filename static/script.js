@@ -109,7 +109,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Update tab buttons
     tabBtns.forEach((btn) => {
-      btn.classList.toggle("active", btn.dataset.tab === tab);
+      const isActive = btn.dataset.tab === tab;
+      btn.classList.toggle("active", isActive);
+      btn.setAttribute("aria-selected", isActive ? "true" : "false");
     });
 
     // Update tab panels
@@ -831,6 +833,9 @@ document.addEventListener("DOMContentLoaded", function () {
   function showError(message) {
     errorMessage.textContent = message;
     errorMessage.classList.remove("hidden");
+    // Focus the error message for screen readers
+    errorMessage.setAttribute("tabindex", "-1");
+    errorMessage.focus();
   }
 
   function hideError() {

@@ -489,6 +489,8 @@ document.addEventListener("DOMContentLoaded", function () {
       currentSortMode = "track";
       sortTrackBtn.classList.add("active");
       sortSentimentBtn.classList.remove("active");
+      sortTrackBtn.setAttribute("aria-pressed", "true");
+      sortSentimentBtn.setAttribute("aria-pressed", "false");
       chartTitle.textContent = "Track Order";
       renderBarChart("song-chart", songSentimentData, "title");
     });
@@ -498,6 +500,8 @@ document.addEventListener("DOMContentLoaded", function () {
       currentSortMode = "sentiment";
       sortSentimentBtn.classList.add("active");
       sortTrackBtn.classList.remove("active");
+      sortSentimentBtn.setAttribute("aria-pressed", "true");
+      sortTrackBtn.setAttribute("aria-pressed", "false");
       chartTitle.textContent = "By Sentiment";
       // Sort from most negative to most positive
       const sorted = [...songSentimentData].sort((a, b) => a.score - b.score);

@@ -12,15 +12,17 @@
     {% block head %}{% endblock %}
   </head>
   <body>
-    <nav class="navbar">
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <nav class="navbar" role="navigation" aria-label="Main navigation">
       <div class="nav-container">
         <a href="/" class="nav-logo">Lyrical Analysis</a>
       </div>
     </nav>
 
-    <main class="container">{% block content %}{% endblock %}</main>
+    <main id="main-content" class="container" role="main">{% block content %}{% endblock %}</main>
 
-    <footer class="footer">
+    <footer class="footer" role="contentinfo">
       <p>Powered by LDA, TextBlob Sentiment Analysis, and NRC Emotion Lexicon</p>
     </footer>
 

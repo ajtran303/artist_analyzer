@@ -21,14 +21,14 @@
 <!-- Step 1: Search -->
 <div id="search-section" class="search-section">
   <!-- Tab Navigation -->
-  <div class="search-tabs">
-    <button class="tab-btn active" data-tab="artist">Search by Artist</button>
-    <button class="tab-btn" data-tab="album">Search by Album</button>
+  <div class="search-tabs" role="tablist" aria-label="Search options">
+    <button class="tab-btn active" data-tab="artist" role="tab" aria-selected="true" aria-controls="artist-tab" id="artist-tab-btn">Search by Artist</button>
+    <button class="tab-btn" data-tab="album" role="tab" aria-selected="false" aria-controls="album-tab" id="album-tab-btn">Search by Album</button>
   </div>
 
   <div class="tab-content">
     <!-- Artist Search Tab -->
-    <div class="tab-panel active" id="artist-tab">
+    <div class="tab-panel active" id="artist-tab" role="tabpanel" aria-labelledby="artist-tab-btn">
       <form id="search-form" class="analyze-form">
         <label for="artist-name" class="input-label">Artist Name</label>
         <div class="input-group">
@@ -52,7 +52,7 @@
     </div>
 
     <!-- Album Search Tab -->
-    <div class="tab-panel" id="album-tab">
+    <div class="tab-panel" id="album-tab" role="tabpanel" aria-labelledby="album-tab-btn">
       <form id="album-search-form" class="analyze-form">
         <label for="album-query" class="input-label">Album Title</label>
         <div class="input-group">
@@ -78,7 +78,7 @@
 
   <p class="language-notice">Analysis is currently optimized for English.</p>
 
-  <div id="error-message" class="error-message hidden"></div>
+  <div id="error-message" class="error-message hidden" role="alert" aria-live="assertive"></div>
 </div>
 
 <!-- Album Search Results (hidden initially) -->
@@ -93,10 +93,10 @@
 </div>
 
 <!-- Loading Albums Section (hidden initially) -->
-<div id="loading-section" class="loading-section hidden">
+<div id="loading-section" class="loading-section hidden" aria-live="polite">
   <div class="loading-content">
     <div class="loading-header">
-      <span class="spinner spinner-large"></span>
+      <span class="spinner spinner-large" aria-hidden="true"></span>
       <h2>Loading Albums</h2>
     </div>
     <div class="progress-bar-container">
@@ -107,7 +107,7 @@
         ></div>
       </div>
     </div>
-    <p id="loading-status" class="loading-status">Searching for artist...</p>
+    <p id="loading-status" class="loading-status" role="status">Searching for artist...</p>
     <div class="fun-fact-container">
       <span class="fun-fact-label">Did you know?</span>
       <p id="loading-fun-fact" class="fun-fact"></p>
