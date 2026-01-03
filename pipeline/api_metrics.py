@@ -13,6 +13,15 @@ API_LIMITS = {
     'lyricsovh': {'limit': None, 'window': 'minute', 'ttl': 60},  # No limit, just track
 }
 
+# Circuit breaker configurations
+# - failure_threshold: consecutive failures before opening circuit
+# - recovery_timeout: seconds to wait before trying again (half-open state)
+# - slow_threshold_ms: response time (ms) considered "slow" (counts as half-failure)
+CIRCUIT_CONFIG = {
+    'musixmatch': {'failure_threshold': 5, 'recovery_timeout': 60, 'slow_threshold_ms': 5000},
+    'lyricsovh': {'failure_threshold': 5, 'recovery_timeout': 30, 'slow_threshold_ms': 5000},
+}
+
 
 class APIMetrics:
     """Track API usage and enforce rate limits using Redis."""
@@ -186,6 +195,236 @@ class APIMetrics:
             api_name: self.get_usage(api_name)
             for api_name in API_LIMITS.keys()
         }
+
+    # ==================== Circuit Breaker Methods ====================
+
+    def is_circuit_open(self, api_name):
+        """
+        Check if circuit breaker is open (service considered unhealthy).
+
+        Returns:
+            True if circuit is open (should skip this API), False otherwise.
+        """
+        if self.redis is None:
+            return False
+
+        config = CIRCUIT_CONFIG.get(api_name)
+        if not config:
+            return False
+
+        try:
+            open_key = f"circuit:{api_name}:open"
+            is_open = self.redis.get(open_key)
+            return is_open is not None
+        except Exception as e:
+            logger.warning(f"Error checking circuit state for {api_name}: {e}")
+            return False
+
+    def record_success(self, api_name, response_time_ms=None):
+        """
+        Record a successful API call. Resets failure count and closes circuit.
+
+        Args:
+            api_name: Name of the API
+            response_time_ms: Response time in milliseconds (optional, for slow detection)
+        """
+        if self.redis is None:
+            return
+
+        config = CIRCUIT_CONFIG.get(api_name)
+        if not config:
+            return
+
+        try:
+            pipe = self.redis.pipeline()
+
+            # Reset consecutive failure counter
+            pipe.delete(f"circuit:{api_name}:failures")
+
+            # Close circuit if it was in half-open state
+            pipe.delete(f"circuit:{api_name}:open")
+            pipe.delete(f"circuit:{api_name}:half_open")
+
+            pipe.execute()
+
+            # Check if response was slow (but successful)
+            if response_time_ms and response_time_ms > config.get('slow_threshold_ms', 5000):
+                logger.warning(f"{api_name} slow response: {response_time_ms}ms")
+                self._record_slow_response(api_name)
+
+        except Exception as e:
+            logger.warning(f"Error recording success for {api_name}: {e}")
+
+    def record_failure(self, api_name):
+        """
+        Record a failed API call. May trip the circuit breaker.
+
+        Args:
+            api_name: Name of the API
+        """
+        if self.redis is None:
+            return
+
+        config = CIRCUIT_CONFIG.get(api_name)
+        if not config:
+            return
+
+        try:
+            # Check if we're in half-open state (testing)
+            half_open_key = f"circuit:{api_name}:half_open"
+            if self.redis.get(half_open_key):
+                # Failed during probe - reopen circuit
+                self._open_circuit(api_name, config)
+                logger.warning(f"Circuit breaker RE-OPENED for {api_name} (probe failed)")
+                return
+
+            # Increment consecutive failure counter
+            failures_key = f"circuit:{api_name}:failures"
+            failures = self.redis.incr(failures_key)
+            # Auto-expire after 2 minutes of no activity
+            self.redis.expire(failures_key, 120)
+
+            logger.debug(f"{api_name} failure count: {failures}/{config['failure_threshold']}")
+
+            if failures >= config['failure_threshold']:
+                self._open_circuit(api_name, config)
+                logger.warning(f"Circuit breaker OPENED for {api_name} after {failures} failures")
+
+        except Exception as e:
+            logger.warning(f"Error recording failure for {api_name}: {e}")
+
+    def _record_slow_response(self, api_name):
+        """Track slow responses - too many slow responses can trip the circuit."""
+        config = CIRCUIT_CONFIG.get(api_name)
+        if not config:
+            return
+
+        try:
+            # Slow responses count as "half" a failure
+            slow_key = f"circuit:{api_name}:slow"
+            slow_count = self.redis.incr(slow_key)
+            self.redis.expire(slow_key, 60)  # Reset after 1 minute
+
+            # 10 slow responses in a minute = trip circuit
+            if slow_count >= 10:
+                self._open_circuit(api_name, config)
+                logger.warning(f"Circuit breaker OPENED for {api_name} (too many slow responses)")
+
+        except Exception as e:
+            logger.warning(f"Error recording slow response for {api_name}: {e}")
+
+    def _open_circuit(self, api_name, config):
+        """Open the circuit breaker for an API."""
+        try:
+            pipe = self.redis.pipeline()
+
+            # Set circuit to open state with recovery timeout
+            open_key = f"circuit:{api_name}:open"
+            pipe.setex(open_key, config['recovery_timeout'], '1')
+
+            # Reset failure counter
+            pipe.delete(f"circuit:{api_name}:failures")
+            pipe.delete(f"circuit:{api_name}:slow")
+
+            pipe.execute()
+
+        except Exception as e:
+            logger.warning(f"Error opening circuit for {api_name}: {e}")
+
+    def should_allow_request(self, api_name):
+        """
+        Check if a request should be allowed (combines rate limit + circuit breaker).
+
+        This is the main entry point for checking if an API call should proceed.
+
+        Returns:
+            Tuple of (allowed: bool, reason: str or None)
+            - allowed: True if request can proceed
+            - reason: Why request was blocked (if not allowed)
+        """
+        # Check circuit breaker first (fast failure)
+        if self.is_circuit_open(api_name):
+            # Check if we should transition to half-open for a probe
+            if self._should_probe(api_name):
+                return True, None
+            return False, 'circuit_open'
+
+        # Check rate limit
+        allowed, wait_time = self.check_limit(api_name)
+        if not allowed:
+            return False, f'rate_limited:{wait_time}s'
+
+        return True, None
+
+    def _should_probe(self, api_name):
+        """
+        Check if circuit should transition to half-open state for a probe request.
+
+        Returns True if we should allow one test request through.
+        """
+        if self.redis is None:
+            return False
+
+        try:
+            open_key = f"circuit:{api_name}:open"
+            half_open_key = f"circuit:{api_name}:half_open"
+
+            # Check remaining TTL on open state
+            ttl = self.redis.ttl(open_key)
+
+            # If TTL expired or about to expire, allow a probe
+            if ttl <= 0:
+                # Use SET NX to ensure only one probe at a time
+                probe_set = self.redis.set(half_open_key, '1', nx=True, ex=10)
+                if probe_set:
+                    logger.info(f"Circuit breaker HALF-OPEN for {api_name} (allowing probe)")
+                    return True
+
+            return False
+
+        except Exception as e:
+            logger.warning(f"Error checking probe state for {api_name}: {e}")
+            return False
+
+    def get_circuit_state(self, api_name):
+        """
+        Get the current circuit breaker state for an API.
+
+        Returns:
+            Dict with state ('closed', 'open', 'half_open'), failures, recovery_in_seconds
+        """
+        config = CIRCUIT_CONFIG.get(api_name, {})
+        result = {
+            'state': 'closed',
+            'failures': 0,
+            'threshold': config.get('failure_threshold', 0),
+            'recovery_in_seconds': None,
+        }
+
+        if self.redis is None or not config:
+            return result
+
+        try:
+            open_key = f"circuit:{api_name}:open"
+            half_open_key = f"circuit:{api_name}:half_open"
+            failures_key = f"circuit:{api_name}:failures"
+
+            is_open = self.redis.get(open_key)
+            is_half_open = self.redis.get(half_open_key)
+            failures = self.redis.get(failures_key)
+
+            if is_half_open:
+                result['state'] = 'half_open'
+            elif is_open:
+                result['state'] = 'open'
+                result['recovery_in_seconds'] = self.redis.ttl(open_key)
+
+            result['failures'] = int(failures) if failures else 0
+
+        except Exception as e:
+            logger.warning(f"Error getting circuit state for {api_name}: {e}")
+
+        return result
 
 
 # Global instance

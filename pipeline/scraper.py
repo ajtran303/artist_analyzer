@@ -59,7 +59,7 @@ def _extract_year_from_date(date_str):
 
 
 def _fetch_lyrics_musixmatch(artist_name, song_title, max_retries=2):
-    """Fetch lyrics from Musixmatch API with retry logic."""
+    """Fetch lyrics from Musixmatch API with retry logic and circuit breaker."""
     from pipeline.api_metrics import get_metrics
 
     if not MUSIXMATCH_API_KEY:
@@ -67,14 +67,15 @@ def _fetch_lyrics_musixmatch(artist_name, song_title, max_retries=2):
 
     metrics = get_metrics()
 
-    # Check rate limit before making request
-    allowed, wait_time = metrics.check_limit('musixmatch')
+    # Check circuit breaker + rate limit before making request
+    allowed, reason = metrics.should_allow_request('musixmatch')
     if not allowed:
-        logger.warning(f"Musixmatch rate limit reached ({wait_time}s until reset), skipping")
+        logger.debug(f"Musixmatch request blocked: {reason}")
         return ''
 
     for attempt in range(max_retries):
         try:
+            start_time = time.time()
             response = requests.get(
                 'https://api.musixmatch.com/ws/1.1/matcher.lyrics.get',
                 params={
@@ -82,8 +83,9 @@ def _fetch_lyrics_musixmatch(artist_name, song_title, max_retries=2):
                     'q_artist': artist_name,
                     'apikey': MUSIXMATCH_API_KEY,
                 },
-                timeout=15
+                timeout=10  # Reduced from 15s to leave budget for fallback
             )
+            response_time_ms = (time.time() - start_time) * 1000
 
             # Track the API call
             metrics.track_call('musixmatch', success=response.status_code == 200)
@@ -99,36 +101,56 @@ def _fetch_lyrics_musixmatch(artist_name, song_title, max_retries=2):
                         if '******* This Lyrics is NOT for Commercial use *******' in lyrics:
                             lyrics = lyrics.split('******* This Lyrics is NOT for Commercial use *******')[0].strip()
                         logger.info(f"Got lyrics from Musixmatch for: {artist_name} - {song_title}")
+                        # Record success with response time for slow detection
+                        metrics.record_success('musixmatch', response_time_ms)
                         return lyrics
 
             # If we got a response but no lyrics, don't retry (song not found)
             if response.status_code == 200:
+                # Still counts as success (API worked, just no lyrics)
+                metrics.record_success('musixmatch', response_time_ms)
                 return ''
+
+        except requests.exceptions.Timeout:
+            metrics.track_call('musixmatch', success=False)
+            metrics.record_failure('musixmatch')
+            logger.debug(f"Musixmatch timeout (attempt {attempt + 1}) for {artist_name} - {song_title}")
+            # Don't retry on timeout - circuit breaker will handle repeated failures
+            break
 
         except Exception as e:
             metrics.track_call('musixmatch', success=False)
+            metrics.record_failure('musixmatch')
             logger.debug(f"Musixmatch attempt {attempt + 1} failed for {artist_name} - {song_title}: {e}")
             if attempt < max_retries - 1:
-                time.sleep(1)  # Wait 1 second before retry
+                time.sleep(0.5)  # Reduced from 1s
 
     return ''
 
 
 def _fetch_lyrics_lyricsovh(artist_name, song_title):
-    """Fetch lyrics from lyrics.ovh API (free, no scraping needed)."""
+    """Fetch lyrics from lyrics.ovh API (free, no scraping needed) with circuit breaker."""
     from pipeline.api_metrics import get_metrics
 
     metrics = get_metrics()
+
+    # Check circuit breaker before making request
+    allowed, reason = metrics.should_allow_request('lyricsovh')
+    if not allowed:
+        logger.debug(f"lyrics.ovh request blocked: {reason}")
+        return ''
 
     try:
         # Clean artist and title for URL
         artist = artist_name.strip()
         title = song_title.strip()
 
+        start_time = time.time()
         response = requests.get(
             f'https://api.lyrics.ovh/v1/{artist}/{title}',
-            timeout=15
+            timeout=10  # Reduced from 15s
         )
+        response_time_ms = (time.time() - start_time) * 1000
 
         # Track the API call
         metrics.track_call('lyricsovh', success=response.status_code == 200)
@@ -138,11 +160,22 @@ def _fetch_lyrics_lyricsovh(artist_name, song_title):
             lyrics = data.get('lyrics', '')
             if lyrics:
                 logger.info(f"Got lyrics from lyrics.ovh for: {artist} - {title}")
+                metrics.record_success('lyricsovh', response_time_ms)
                 return lyrics.strip()
+            # No lyrics but API worked
+            metrics.record_success('lyricsovh', response_time_ms)
 
         return ''
+
+    except requests.exceptions.Timeout:
+        metrics.track_call('lyricsovh', success=False)
+        metrics.record_failure('lyricsovh')
+        logger.debug(f"lyrics.ovh timeout for {artist_name} - {song_title}")
+        return ''
+
     except Exception as e:
         metrics.track_call('lyricsovh', success=False)
+        metrics.record_failure('lyricsovh')
         logger.debug(f"lyrics.ovh failed for {artist_name} - {song_title}: {e}")
         return ''
 
