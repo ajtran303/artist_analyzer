@@ -242,6 +242,12 @@ document.addEventListener("DOMContentLoaded", function () {
       albumItem.className = "album-item";
       albumItem.dataset.albumId = album.id;
       albumItem.dataset.artistName = album.artist;
+      albumItem.setAttribute("tabindex", "0");
+      albumItem.setAttribute("role", "button");
+      albumItem.setAttribute(
+        "aria-label",
+        `${album.name} by ${album.artist}${album.year ? `, ${album.year}` : ""}`
+      );
 
       const year = album.year || "";
       const yearDisplay = year ? `(${year})` : "";
@@ -266,6 +272,21 @@ document.addEventListener("DOMContentLoaded", function () {
       albumItem.addEventListener("click", (e) => {
         if (e.target.closest(".analyze-album-btn")) return;
         selectAlbumFromSearch(albumItem, album);
+      });
+
+      albumItem.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          if (albumItem.classList.contains("selected")) {
+            // Already selected - trigger analyze
+            const analyzeBtn = albumItem.querySelector(".analyze-album-btn");
+            if (analyzeBtn && !analyzeBtn.disabled) {
+              analyzeBtn.click();
+            }
+          } else {
+            selectAlbumFromSearch(albumItem, album);
+          }
+        }
       });
 
       const analyzeBtn = albumItem.querySelector(".analyze-album-btn");
@@ -541,6 +562,12 @@ document.addEventListener("DOMContentLoaded", function () {
       const albumItem = document.createElement("div");
       albumItem.className = "album-item";
       albumItem.dataset.albumId = album.id;
+      albumItem.setAttribute("tabindex", "0");
+      albumItem.setAttribute("role", "button");
+      albumItem.setAttribute(
+        "aria-label",
+        `${album.name}${album.year ? `, ${album.year}` : ""}`
+      );
 
       const year = album.year || "";
       const yearDisplay = year ? `(${year})` : "";
@@ -565,6 +592,21 @@ document.addEventListener("DOMContentLoaded", function () {
         // Don't toggle selection if clicking the button itself
         if (e.target.closest(".analyze-album-btn")) return;
         selectAlbum(albumItem, album);
+      });
+
+      albumItem.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          if (albumItem.classList.contains("selected")) {
+            // Already selected - trigger analyze
+            const analyzeBtn = albumItem.querySelector(".analyze-album-btn");
+            if (analyzeBtn && !analyzeBtn.disabled) {
+              analyzeBtn.click();
+            }
+          } else {
+            selectAlbum(albumItem, album);
+          }
+        }
       });
 
       // Add click handler for the analyze button
